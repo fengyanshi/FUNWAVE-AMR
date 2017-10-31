@@ -51,13 +51,12 @@
 !-------------------------------------------------------------------------------------
 
 MODULE INPUT_READ
-
 USE PARAM,ONLY : SP
 #if defined (PARALLEL)
   USE GLOBAL,ONLY : myid,ier
   USE MPI
 # endif
-  IMPLICIT NONE
+IMPLICIT NONE
   LOGICAL :: FILE_EXIST
   CHARACTER(LEN=80) :: VAL_TYPE 
   CHARACTER(LEN=80) :: VAL_READ 

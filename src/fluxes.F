@@ -49,9 +49,10 @@
 !        05/06/2010 Fengyan Shi
 !
 !-------------------------------------------------------------------------------------
-SUBROUTINE FLUXES
+SUBROUTINE FLUXES(ng)
      USE GLOBAL
      IMPLICIT NONE
+     INTEGER,INTENT(IN) :: ng
 
       IF(HIGH_ORDER(1:3)=='FOU') THEN       !ykchoi (08/28/2016)
 
@@ -67,14 +68,24 @@ SUBROUTINE FLUXES
        CALL CONSTRUCTION_HO   ! note choi used the name construction_ho_vanleer
                               ! I changed back for consistency
 
-       CALL WAVE_SPEED(Mloc,Nloc,Mloc1,Nloc1,UxL,UxR,VyL,VyR,HxL,HxR,HyL,HyR, &
-            SxL,SxR,SyL,SyR)
+       CALL WAVE_SPEED(Mloc,Nloc,Mloc1,Nloc1,  &
+	      UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc),  &
+		  VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1),  &
+		  HxL(1:Mloc1,1:Nloc),HxR(1:Mloc1,1:Nloc),  &
+		  HyL(1:Mloc,1:Nloc1),HyR(1:Mloc,1:Nloc1),  &
+            SxL(1:Mloc1,1:Nloc),SxR(1:Mloc1,1:Nloc),  &
+		  SyL(1:Mloc,1:Nloc1),SyR(1:Mloc,1:Nloc1))
 
       ELSE                                     
        CALL DelxyFun
        CALL CONSTRUCTION 
-       CALL WAVE_SPEED(Mloc,Nloc,Mloc1,Nloc1,UxL,UxR,VyL,VyR,HxL,HxR,HyL,HyR, &
-            SxL,SxR,SyL,SyR)
+       CALL WAVE_SPEED(Mloc,Nloc,Mloc1,Nloc1,  &
+	      UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc),  &
+		  VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1),  &
+		  HxL(1:Mloc1,1:Nloc),HxR(1:Mloc1,1:Nloc),  &
+		  HyL(1:Mloc,1:Nloc1),HyR(1:Mloc,1:Nloc1),  &
+            SxL(1:Mloc1,1:Nloc),SxR(1:Mloc1,1:Nloc),  &
+		  SyL(1:Mloc,1:Nloc1),SyR(1:Mloc,1:Nloc1))
 
      ENDIF
 
@@ -84,7 +95,7 @@ SUBROUTINE FLUXES
        CALL FLUX_AT_INTERFACE
      ENDIF
 
-     CALL BOUNDARY_CONDITION
+     CALL BOUNDARY_CONDITION(ng) !For AMR routine 
 
 END SUBROUTINE FLUXES
 
@@ -123,12 +134,24 @@ SUBROUTINE FLUX_AT_INTERFACE_HLL
      USE GLOBAL
      REAL(SP)::SR,SL,FL,FR,UL,UR
 
-     CALL HLL(Mloc1,Nloc,SxL,SxR,PL,PR,EtaRxL,EtaRxR,P)
-     CALL HLL(Mloc,Nloc1,SyL,SyR,QL,QR,EtaRyL,EtaRyR,Q)
-     CALL HLL(Mloc1,Nloc,SxL,SxR,FxL,FxR,HUxL,HUxR,Fx)
-     CALL HLL(Mloc,Nloc1,SyL,SyR,FyL,FyR,HUyL,HUyR,Fy)
-     CALL HLL(Mloc1,Nloc,SxL,SxR,GxL,GxR,HVxL,HVxR,Gx)
-     CALL HLL(Mloc,Nloc1,SyL,SyR,GyL,GyR,HVyL,HVyR,Gy)
+     CALL HLL(Mloc1,Nloc,SxL(1:Mloc1,1:Nloc),SxR(1:Mloc1,1:Nloc),  &
+              PL(1:Mloc1,1:Nloc),PR(1:Mloc1,1:Nloc),EtaRxL(1:Mloc1,1:Nloc),  &
+			EtaRxR(1:Mloc1,1:Nloc),P(1:Mloc1,1:Nloc))
+     CALL HLL(Mloc,Nloc1,SyL(1:Mloc,1:Nloc1),SyR(1:Mloc,1:Nloc1),  &
+              QL(1:Mloc,1:Nloc1),QR(1:Mloc,1:Nloc1),EtaRyL(1:Mloc,1:Nloc1),  &
+			EtaRyR(1:Mloc,1:Nloc1),Q(1:Mloc,1:Nloc1))
+     CALL HLL(Mloc1,Nloc,SxL(1:Mloc1,1:Nloc),SxR(1:Mloc1,1:Nloc),  &
+              FxL(1:Mloc1,1:Nloc),FxR(1:Mloc1,1:Nloc),HUxL(1:Mloc1,1:Nloc),  &
+			HUxR(1:Mloc1,1:Nloc),Fx(1:Mloc1,1:Nloc))
+     CALL HLL(Mloc,Nloc1,SyL(1:Mloc,1:Nloc1),SyR(1:Mloc,1:Nloc1),  &
+              FyL(1:Mloc,1:Nloc1),FyR(1:Mloc,1:Nloc1),HUyL(1:Mloc,1:Nloc1),  &
+			HUyR(1:Mloc,1:Nloc1),Fy(1:Mloc,1:Nloc1))
+     CALL HLL(Mloc1,Nloc,SxL(1:Mloc1,1:Nloc),SxR(1:Mloc1,1:Nloc),  &
+              GxL(1:Mloc1,1:Nloc),GxR(1:Mloc1,1:Nloc),HVxL(1:Mloc1,1:Nloc),  &
+		    HVxR(1:Mloc1,1:Nloc),Gx(1:Mloc1,1:Nloc))
+     CALL HLL(Mloc,Nloc1,SyL(1:Mloc,1:Nloc1),SyR(1:Mloc,1:Nloc1),  &
+              GyL(1:Mloc,1:Nloc1),GyR(1:Mloc,1:Nloc1),HVyL(1:Mloc,1:Nloc1),  &
+			HVyR(1:Mloc,1:Nloc1),Gy(1:Mloc,1:Nloc1))
 
 END SUBROUTINE FLUX_AT_INTERFACE_HLL
 
@@ -178,18 +201,35 @@ SUBROUTINE DelxyFun
 
 ! compute DelxFun
 
-      CALL DelxFun(DX,Mloc,Nloc,Eta,DelxEtar)
-      CALL DelxFun(DX,Mloc,Nloc,U,DelxU)
-      CALL DelxFun(DX,Mloc,Nloc,V,DelxV)
-      CALL DelxFun(DX,Mloc,Nloc,HU,DelxHU)
-      CALL DelxFun(DX,Mloc,Nloc,HV,DelxHV)
+# if defined(CARTESIAN)
+      CALL DelxFun(DX,Mloc,Nloc,Eta(1:Mloc,1:Nloc),DelxEtar(1:Mloc,1:Nloc))
+      CALL DelxFun(DX,Mloc,Nloc,U(1:Mloc,1:Nloc),DelxU(1:Mloc,1:Nloc))
+      CALL DelxFun(DX,Mloc,Nloc,V(1:Mloc,1:Nloc),DelxV(1:Mloc,1:Nloc))
+      CALL DelxFun(DX,Mloc,Nloc,HU(1:Mloc,1:Nloc),DelxHU(1:Mloc,1:Nloc))
+      CALL DelxFun(DX,Mloc,Nloc,HV(1:Mloc,1:Nloc),DelxHV(1:Mloc,1:Nloc))
 
 ! compute DelyFun
-      CALL DelyFun(DY,Mloc,Nloc,Eta,DelyEtar)
-      CALL DelyFun(DY,Mloc,Nloc,U,DelyU)
-      CALL DelyFun(DY,Mloc,Nloc,V,DelyV)
-      CALL DelyFun(DY,Mloc,Nloc,HV,DelyHV)
-      CALL DelyFun(DY,Mloc,Nloc,HU,DelyHU)
+      CALL DelyFun(DY,Mloc,Nloc,Eta(1:Mloc,1:Nloc),DelyEtar(1:Mloc,1:Nloc))
+      CALL DelyFun(DY,Mloc,Nloc,U(1:Mloc,1:Nloc),DelyU(1:Mloc,1:Nloc))
+      CALL DelyFun(DY,Mloc,Nloc,V(1:Mloc,1:Nloc),DelyV(1:Mloc,1:Nloc))
+      CALL DelyFun(DY,Mloc,Nloc,HV(1:Mloc,1:Nloc),DelyHV(1:Mloc,1:Nloc))
+      CALL DelyFun(DY,Mloc,Nloc,HU(1:Mloc,1:Nloc),DelyHU(1:Mloc,1:Nloc))
+# else
+
+      CALL DelxFun(DX(1:Mloc,1:Nloc),Mloc,Nloc,Eta(1:Mloc,1:Nloc),DelxEtar(1:Mloc,1:Nloc))
+      CALL DelxFun(DX(1:Mloc,1:Nloc),Mloc,Nloc,U(1:Mloc,1:Nloc),DelxU(1:Mloc,1:Nloc))
+      CALL DelxFun(DX(1:Mloc,1:Nloc),Mloc,Nloc,V(1:Mloc,1:Nloc),DelxV(1:Mloc,1:Nloc))
+      CALL DelxFun(DX(1:Mloc,1:Nloc),Mloc,Nloc,HU(1:Mloc,1:Nloc),DelxHU(1:Mloc,1:Nloc))
+      CALL DelxFun(DX(1:Mloc,1:Nloc),Mloc,Nloc,HV(1:Mloc,1:Nloc),DelxHV(1:Mloc,1:Nloc))
+
+! compute DelyFun
+      CALL DelyFun(DY(1:Mloc,1:Nloc),Mloc,Nloc,Eta(1:Mloc,1:Nloc),DelyEtar(1:Mloc,1:Nloc))
+      CALL DelyFun(DY(1:Mloc,1:Nloc),Mloc,Nloc,U(1:Mloc,1:Nloc),DelyU(1:Mloc,1:Nloc))
+      CALL DelyFun(DY(1:Mloc,1:Nloc),Mloc,Nloc,V(1:Mloc,1:Nloc),DelyV(1:Mloc,1:Nloc))
+      CALL DelyFun(DY(1:Mloc,1:Nloc),Mloc,Nloc,HV(1:Mloc,1:Nloc),DelyHV(1:Mloc,1:Nloc))
+      CALL DelyFun(DY(1:Mloc,1:Nloc),Mloc,Nloc,HU(1:Mloc,1:Nloc),DelyHU(1:Mloc,1:Nloc))
+
+# endif
 
 END SUBROUTINE DelxyFun
 
@@ -418,8 +458,8 @@ SUBROUTINE CONSTRUCTION
      IMPLICIT NONE
 # if defined (CARTESIAN)
 ! ykchoi (15. 08. 06.)
-     REAL(SP),DIMENSION(Mloc1,Nloc) :: DelxU4, DelxV4
-     REAL(SP),DIMENSION(Mloc,Nloc1) :: DelyV4, DelyU4
+     REAL(SP),DIMENSION(Mloc,Nloc) :: DelxU4, DelxV4
+     REAL(SP),DIMENSION(Mloc,Nloc) :: DelyV4, DelyU4
 # endif
 
 ![ykchoi	(09.07.2015)
@@ -434,23 +474,43 @@ SUBROUTINE CONSTRUCTION
 !ykchoi]
 
 ! construct in x-direction
-     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,U,DelxU,UxL,UxR,Kappa)
-     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,V,DelxV,VxL,VxR,Kappa)
-     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,HU,DelxHU,HUxL,HUxR,Kappa)
-     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,HV,DelxHV,HVxL,HVxR,Kappa)
-     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,Eta,DelxEtar,EtaRxL,EtaRxR,Kappa)
+# if defined(CARTESIAN)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,U(1:Mloc,1:Nloc),DelxU(1:Mloc,1:Nloc),  &
+                      UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,V(1:Mloc,1:Nloc),DelxV(1:Mloc,1:Nloc),  &
+                      VxL(1:Mloc1,1:Nloc),VxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,HU(1:Mloc,1:Nloc),DelxHU(1:Mloc,1:Nloc),  &
+                      HUxL(1:Mloc1,1:Nloc),HUxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,HV(1:Mloc,1:Nloc),DelxHV(1:Mloc,1:Nloc),  &
+                      HVxL(1:Mloc1,1:Nloc),HVxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,Eta(1:Mloc,1:Nloc),DelxEtar(1:Mloc,1:Nloc),  &
+                      EtaRxL(1:Mloc1,1:Nloc),EtaRxR(1:Mloc1,1:Nloc),Kappa)
+# else
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),DelxU(1:Mloc,1:Nloc),  &
+                      UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),DelxV(1:Mloc,1:Nloc),  &
+                      VxL(1:Mloc1,1:Nloc),VxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),DelxHU(1:Mloc,1:Nloc),  &
+                      HUxL(1:Mloc1,1:Nloc),HUxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),DelxHV(1:Mloc,1:Nloc),  &
+                      HVxL(1:Mloc1,1:Nloc),HVxR(1:Mloc1,1:Nloc),Kappa)
+     CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),DelxEtar(1:Mloc,1:Nloc),  &
+                      EtaRxL(1:Mloc1,1:Nloc),EtaRxR(1:Mloc1,1:Nloc),Kappa)
+# endif
      HxL=EtaRxL+Depthx
      HxR=EtaRxR+Depthx
 # if defined (CARTESIAN)
 ! dispersion
      IF(DISPERSION)THEN
-      CALL DelxFun(DX,Mloc,Nloc,U4,DelxU4)
-      CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,U4,DelxU4,U4xL,U4xR,Kappa)
+      CALL DelxFun(DX,Mloc,Nloc,U4(1:Mloc,1:Nloc),DelxU4(1:Mloc,1:Nloc))
+      CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,U4(1:Mloc,1:Nloc),DelxU4(1:Mloc,1:Nloc),   &
+	                 U4xL(1:Mloc1,1:Nloc),U4xR(1:Mloc1,1:Nloc),Kappa)
 
 ! ykchoi (15. 08. 06.)
 ! DelxV4 should be considered.
-      CALL DelxFun(DX,Mloc,Nloc,V4,DelxV4)
-	CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,V4,DelxV4,V4xL,V4xR,Kappa)
+      CALL DelxFun(DX,Mloc,Nloc,V4(1:Mloc,1:Nloc),DelxV4(1:Mloc,1:Nloc))
+	CALL CONSTRUCT_X(Mloc,Mloc1,Nloc,DX,V4(1:Mloc,1:Nloc),DelxV4(1:Mloc,1:Nloc),   &
+	                 V4xL(1:Mloc1,1:Nloc),V4xR(1:Mloc1,1:Nloc),Kappa)
      ENDIF
 # endif
 
@@ -540,23 +600,43 @@ SUBROUTINE CONSTRUCTION
 
 
 ! construct in y-direction
-     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,U,DelyU,UyL,UyR,Kappa)
-     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,V,DelyV,VyL,VyR,Kappa)
-     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,HV,DelyHV,HVyL,HVyR,Kappa)
-     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,HU,DelyHU,HUyL,HUyR,Kappa)
-     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,Eta,DelyEtar,EtaRyL,EtaRyR,Kappa)
+# if defined(CARTESIAN)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,U(1:Mloc,1:Nloc),DelyU(1:Mloc,1:Nloc),  &
+                      UyL(1:Mloc,1:Nloc1),UyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,V(1:Mloc,1:Nloc),DelyV(1:Mloc,1:Nloc),  &
+                      VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,HV(1:Mloc,1:Nloc),DelyHV(1:Mloc,1:Nloc),  &
+                      HVyL(1:Mloc,1:Nloc1),HVyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,HU(1:Mloc,1:Nloc),DelyHU(1:Mloc,1:Nloc),  &
+                      HUyL(1:Mloc,1:Nloc1),HUyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,Eta(1:Mloc,1:Nloc),DelyEtar(1:Mloc,1:Nloc),  &
+                      EtaRyL(1:Mloc,1:Nloc1),EtaRyR(1:Mloc,1:Nloc1),Kappa)
+# else
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),DelyU(1:Mloc,1:Nloc),  &
+                      UyL(1:Mloc,1:Nloc1),UyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),DelyV(1:Mloc,1:Nloc),  &
+                      VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),DelyHV(1:Mloc,1:Nloc),  &
+                      HVyL(1:Mloc,1:Nloc1),HVyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),DelyHU(1:Mloc,1:Nloc),  &
+                      HUyL(1:Mloc,1:Nloc1),HUyR(1:Mloc,1:Nloc1),Kappa)
+     CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),DelyEtar(1:Mloc,1:Nloc),  &
+                      EtaRyL(1:Mloc,1:Nloc1),EtaRyR(1:Mloc,1:Nloc1),Kappa)
+# endif
      HyL=EtaRyL+Depthy
      HyR=EtaRyR+Depthy
 
 # if defined (CARTESIAN)
      IF(DISPERSION)THEN
-      CALL DelyFun(DY,Mloc,Nloc,V4,DelyV4)
-      CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,V4,DelyV4,V4yL,V4yR,Kappa)
+      CALL DelyFun(DY,Mloc,Nloc,V4(1:Mloc,1:Nloc),DelyV4(1:Mloc,1:Nloc))
+      CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,V4(1:Mloc,1:Nloc),DelyV4(1:Mloc,1:Nloc),  &
+	                 V4yL(1:Mloc,1:Nloc1),V4yR(1:Mloc,1:Nloc1),Kappa)
 
 ! ykchoi (15. 08. 06.)
 ! DelyU4 should be considered.
-      CALL DelyFun(DY,Mloc,Nloc,U4,DelyU4)
-      CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,U4,DelyU4,U4yL,U4yR,Kappa)
+      CALL DelyFun(DY,Mloc,Nloc,U4(1:Mloc,1:Nloc),DelyU4(1:Mloc,1:Nloc))
+      CALL CONSTRUCT_Y(Mloc,Nloc,Nloc1,DY,U4(1:Mloc,1:Nloc),DelyU4(1:Mloc,1:Nloc),  &
+	                 U4yL(1:Mloc,1:Nloc1),U4yR(1:Mloc,1:Nloc1),Kappa)
      ENDIF
 # endif
 
@@ -773,8 +853,8 @@ SUBROUTINE CONSTRUCTION_HO_minmod
      USE GLOBAL
      IMPLICIT NONE
 # if defined (CARTESIAN)
-     REAL(SP),DIMENSION(Mloc1,Nloc) :: DelxU4
-     REAL(SP),DIMENSION(Mloc,Nloc1) :: DelyV4
+     REAL(SP),DIMENSION(Mloc,Nloc) :: DelxU4
+     REAL(SP),DIMENSION(Mloc,Nloc) :: DelyV4
 # endif
 	
 ![ykchoi	(09.07.2015)
@@ -789,21 +869,42 @@ SUBROUTINE CONSTRUCTION_HO_minmod
 !ykchoi]
 
 ! construct in x-direction
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U,UxL,UxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V,VxL,VxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,HU,HUxL,HUxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,HV,HVxL,HVxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,Eta,EtaRxL,EtaRxR)
+# if defined(CARTESIAN)
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX,MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX,MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VxL(1:Mloc1,1:Nloc),VxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX,MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUxL(1:Mloc1,1:Nloc),HUxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX,MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVxL(1:Mloc1,1:Nloc),HVxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX,MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRxL(1:Mloc1,1:Nloc),EtaRxR(1:Mloc1,1:Nloc))
+# else
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VxL(1:Mloc1,1:Nloc),VxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUxL(1:Mloc1,1:Nloc),HUxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVxL(1:Mloc1,1:Nloc),HVxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+           DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRxL(1:Mloc1,1:Nloc),EtaRxR(1:Mloc1,1:Nloc))
+# endif
+
 
 ! dispersion
      HxL=EtaRxL+Depthx
      HxR=EtaRxR+Depthx
 # if defined (CARTESIAN)
      IF(DISPERSION)THEN
-      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4xL,U4xR)
+      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,DX,  &
+	MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4xL(1:Mloc1,1:Nloc),U4xR(1:Mloc1,1:Nloc))
 	  
 	!ykchoi :: Following V4xL, V4xR terms should be computed.
-	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4xL,V4xR)  
+	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,DX,  &
+	MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4xL(1:Mloc1,1:Nloc),V4xR(1:Mloc1,1:Nloc))  
      ENDIF
 
 !ykchoi (09.07.2015)
@@ -828,10 +929,12 @@ SUBROUTINE CONSTRUCTION_HO_minmod
 # else
 # if defined(ZALPHA)
      IF(DISPERSION)THEN
-      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4xL,U4xR)
+      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+	DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4xL(1:Mloc1,1:Nloc),U4xR(1:Mloc1,1:Nloc))
 
 	!ykchoi :: Following V4xL, V4xR terms should be computed.
-	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4xL,V4xR)
+	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+	DX(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4xL(1:Mloc1,1:Nloc),V4xR(1:Mloc1,1:Nloc))
      ENDIF
 
      PL(1:Mloc1,1:Nloc)=HUxL(1:Mloc1,1:Nloc) &
@@ -883,21 +986,42 @@ SUBROUTINE CONSTRUCTION_HO_minmod
 # endif
       
 ! construct in y-direction
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U,UyL,UyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V,VyL,VyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,HV,HVyL,HVyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,HU,HUyL,HUyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,Eta,EtaRyL,EtaRyR)
+# if defined(CARTESIAN)
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY,MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UyL(1:Mloc,1:Nloc1),UyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY,MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY,MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVyL(1:Mloc,1:Nloc1),HVyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY,MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUyL(1:Mloc,1:Nloc1),HUyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY,MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRyL(1:Mloc,1:Nloc1),EtaRyR(1:Mloc,1:Nloc1))
+# else
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UyL(1:Mloc,1:Nloc1),UyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVyL(1:Mloc,1:Nloc1),HVyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUyL(1:Mloc,1:Nloc1),HUyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,  &
+       DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRyL(1:Mloc,1:Nloc1),EtaRyR(1:Mloc,1:Nloc1))
+# endif
+
 
 ! dispersion
      HyL=EtaRyL+Depthy
      HyR=EtaRyR+Depthy
 # if defined (CARTESIAN)
      IF(DISPERSION)THEN
-       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4yL,V4yR)
+       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	 DY,MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4yL(1:Mloc,1:Nloc1),V4yR(1:Mloc,1:Nloc1))
 
 	 !ykchoi :: Following U4yL, U4yR terms should be computed.
-	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4yL,U4yR)
+	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	 DY,MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4yL(1:Mloc,1:Nloc1),U4yR(1:Mloc,1:Nloc1))
      ENDIF
 
      QL(1:Mloc,1:Nloc1)=HVyL(1:Mloc,1:Nloc1)   &
@@ -920,10 +1044,12 @@ SUBROUTINE CONSTRUCTION_HO_minmod
 
 # if defined (ZALPHA)
      IF(DISPERSION)THEN
-       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4yL,V4yR)
+       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	 DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4yL(1:Mloc,1:Nloc1),V4yR(1:Mloc,1:Nloc1))
 
 	 !ykchoi :: Following U4yL, U4yR terms should be computed.
-	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4yL,U4yR)
+	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	 DY(1:Mloc,1:Nloc),MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4yL(1:Mloc,1:Nloc1),U4yR(1:Mloc,1:Nloc1))
      ENDIF
 
      QL(1:Mloc,1:Nloc1)=HVyL(1:Mloc,1:Nloc1)   &
@@ -1283,11 +1409,16 @@ SUBROUTINE CONSTRUCTION_HO
      MASK9v(1:Mloc,Nloc1)=MASK9(1:Mloc,Nloc)
 
 ! construct in x-direction
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U,UxL,UxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V,VxL,VxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,HU,HUxL,HUxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,HV,HVxL,HVxR)
-     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,Eta,EtaRxL,EtaRxR)
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+          MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UxL(1:Mloc1,1:Nloc),UxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+          MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VxL(1:Mloc1,1:Nloc),VxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+          MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUxL(1:Mloc1,1:Nloc),HUxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+          MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVxL(1:Mloc1,1:Nloc),HVxR(1:Mloc1,1:Nloc))
+     CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+          MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRxL(1:Mloc1,1:Nloc),EtaRxR(1:Mloc1,1:Nloc))
 
      HxL=EtaRxL+Depthx
      HxR=EtaRxR+Depthx
@@ -1295,8 +1426,10 @@ SUBROUTINE CONSTRUCTION_HO
 # if defined (CARTESIAN)
      IF(DISPERSION)THEN
 
-      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4xL,U4xR)
-	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4xL,V4xR)  
+      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+	     MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4xL(1:Mloc1,1:Nloc),U4xR(1:Mloc1,1:Nloc))
+	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,   &
+	     MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4xL(1:Mloc1,1:Nloc),V4xR(1:Mloc1,1:Nloc))  
 
      ENDIF
 
@@ -1320,8 +1453,10 @@ SUBROUTINE CONSTRUCTION_HO
 # if defined(ZALPHA)
      IF(DISPERSION)THEN
 
-      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4xL,U4xR)
-	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4xL,V4xR)
+      CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+	     MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4xL(1:Mloc1,1:Nloc),U4xR(1:Mloc1,1:Nloc))
+	CALL CONSTRUCT_HO_X(Mloc,Nloc,Mloc1,Ibeg,Iend,Jbeg,Jend,  &
+	     MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4xL(1:Mloc1,1:Nloc),V4xR(1:Mloc1,1:Nloc))
 
      ENDIF
 
@@ -1371,11 +1506,16 @@ SUBROUTINE CONSTRUCTION_HO
 # endif
       
 ! construct in y-direction
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U,UyL,UyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V,VyL,VyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,HV,HVyL,HVyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,HU,HUyL,HUyR)
-     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,Eta,EtaRyL,EtaRyR)
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+          MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),UyL(1:Mloc,1:Nloc1),UyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+          MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),VyL(1:Mloc,1:Nloc1),VyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+          MASK(1:Mloc,1:Nloc),HV(1:Mloc,1:Nloc),HVyL(1:Mloc,1:Nloc1),HVyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+          MASK(1:Mloc,1:Nloc),HU(1:Mloc,1:Nloc),HUyL(1:Mloc,1:Nloc1),HUyR(1:Mloc,1:Nloc1))
+     CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+          MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),EtaRyL(1:Mloc,1:Nloc1),EtaRyR(1:Mloc,1:Nloc1))
 
      HyL=EtaRyL+Depthy
      HyR=EtaRyR+Depthy
@@ -1383,8 +1523,10 @@ SUBROUTINE CONSTRUCTION_HO
 # if defined (CARTESIAN)
      IF(DISPERSION)THEN
 
-       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4yL,V4yR)
-	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4yL,U4yR)
+       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	      MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4yL(1:Mloc,1:Nloc1),V4yR(1:Mloc,1:Nloc1))
+	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	      MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4yL(1:Mloc,1:Nloc1),U4yR(1:Mloc,1:Nloc1))
 
      ENDIF
 
@@ -1409,8 +1551,10 @@ SUBROUTINE CONSTRUCTION_HO
 # if defined (ZALPHA)
      IF(DISPERSION)THEN
 
-       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,V4,V4yL,V4yR)
-	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,MASK,U4,U4yL,U4yR)
+       CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	      MASK(1:Mloc,1:Nloc),V4(1:Mloc,1:Nloc),V4yL(1:Mloc,1:Nloc1),V4yR(1:Mloc,1:Nloc1))
+	 CALL CONSTRUCT_HO_Y(Mloc,Nloc,Nloc1,Ibeg,Iend,Jbeg,Jend,   &
+	      MASK(1:Mloc,1:Nloc),U4(1:Mloc,1:Nloc),U4yL(1:Mloc,1:Nloc1),U4yR(1:Mloc,1:Nloc1))
 
      ENDIF
 

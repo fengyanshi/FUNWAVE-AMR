@@ -50,18 +50,18 @@
 !      04/05/2011  Jeff Harris, corrected bugs in do-loop
 !
 ! -----------------------------------------------------------------------------------
-SUBROUTINE BOUNDARY_CONDITION
+SUBROUTINE BOUNDARY_CONDITION(ng)
      USE GLOBAL
      IMPLICIT NONE
      REAL(SP)::Xi,Deps
-
+     INTEGER,INTENT(IN) :: ng
 
 ! four sides of computational domain
 
 # if defined (PARALLEL)
         if ( n_west .eq. MPI_PROC_NULL ) then
 # endif
-
+   IF(ng.EQ.1)THEN
 # if defined (COUPLING)
    IF(IN_DOMAIN_WEST)THEN
      DO J=Jbeg,Kstart_WEST-1
@@ -88,6 +88,7 @@ SUBROUTINE BOUNDARY_CONDITION
       Gx(Ibeg,J)=ZERO
       ENDDO
 # endif 
+    ENDIF
 
 # if defined (PARALLEL)
       endif
@@ -97,7 +98,7 @@ SUBROUTINE BOUNDARY_CONDITION
 # if defined (PARALLEL)
         if ( n_east .eq. MPI_PROC_NULL ) then
 # endif
-
+   IF(ng.EQ.1)THEN
 # if defined (COUPLING)
    IF(IN_DOMAIN_EAST)THEN
      DO J=Jbeg,Kstart_EAST-1
@@ -124,6 +125,7 @@ SUBROUTINE BOUNDARY_CONDITION
       Gx(Iend1,J)=ZERO
      ENDDO
 # endif 
+   ENDIF
 
 # if defined (PARALLEL)
       endif
@@ -139,7 +141,7 @@ SUBROUTINE BOUNDARY_CONDITION
 # if defined (PARALLEL)
       if ( n_suth .eq. MPI_PROC_NULL ) then
 # endif
-
+   IF(ng.EQ.1)THEN
 # if defined (COUPLING)
    IF(IN_DOMAIN_SOUTH)THEN
      DO I=Ibeg,Kstart_SOUTH-1
@@ -166,6 +168,7 @@ SUBROUTINE BOUNDARY_CONDITION
       Gy(I,Jbeg)=0.5_SP*GRAV*(Xi*Xi*Gamma3+2.0_SP*Xi*Deps)
       ENDDO
 # endif  
+   ENDIF
 
 # if defined (PARALLEL)
       endif
@@ -173,6 +176,7 @@ SUBROUTINE BOUNDARY_CONDITION
 # if defined (PARALLEL)
       if ( n_nrth .eq. MPI_PROC_NULL ) then
 # endif
+   IF(ng.EQ.1)THEN
 # if defined (COUPLING)
    IF(IN_DOMAIN_NORTH)THEN
      DO I=Ibeg,Kstart_NORTH-1
@@ -199,6 +203,7 @@ SUBROUTINE BOUNDARY_CONDITION
       Gy(I,Jend1)=0.5_SP*GRAV*(Xi*Xi*Gamma3+2.0_SP*Xi*Deps)
      ENDDO
 # endif 
+   ENDIF
 # if defined (PARALLEL)
      endif
 # endif
@@ -299,114 +304,114 @@ END SUBROUTINE BOUNDARY_CONDITION
 !   07/09/2010 Fengyan Shi, use dummy variables 2) add vtype=3
 !
 !-------------------------------------------------------------------
-SUBROUTINE EXCHANGE_DISPERSION
+SUBROUTINE EXCHANGE_DISPERSION(ng)
     USE GLOBAL
     IMPLICIT NONE
     INTEGER :: VTYPE
+    INTEGER,INTENT(IN) :: ng
 
 # if defined (CARTESIAN)
     VTYPE=2
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxx,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxx,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     VTYPE=3
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vyy,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVyy,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vyy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVyy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
     VTYPE=1
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxy,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxy,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vxy,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVxy,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
     IF(Gamma2>ZERO)THEN
 
       IF(DISP_TIME_LEFT)THEN
         VTYPE=1 ! symetric in both direction
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAT,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAT(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=2  ! like u
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETATx,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETATx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=3  ! like v
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETATy,VTYPE,PERIODIC) 
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETATy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng) 
       ELSE
         VTYPE=2
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ut,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ut(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=3
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vt,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vt(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
         VTYPE=1
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utx,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=1
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vty,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vty(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
         VTYPE=2
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utxx,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utxx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=3
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vtyy,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vtyy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
         VTYPE=1
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utxy,VTYPE,PERIODIC) 
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vtxy,VTYPE,PERIODIC) 
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Utxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng) 
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vtxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng) 
 
         VTYPE=2
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUtxx,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUtxx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
         VTYPE=3
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVtyy,VTYPE,PERIODIC)
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVtyy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
         VTYPE=1
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUtxy,VTYPE,PERIODIC) 
-        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVtxy,VTYPE,PERIODIC) 
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUtxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng) 
+        CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVtxy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng) 
     
       ENDIF
 
       VTYPE=1  ! symetric in both direction
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ux,VTYPE,PERIODIC)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUx,VTYPE,PERIODIC)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vy,VTYPE,PERIODIC)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVy,VTYPE,PERIODIC)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ux(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
       VTYPE=3  !like v
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uy,VTYPE,PERIODIC)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUy,VTYPE,PERIODIC)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
       Vtype=2  !like u
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vx,VTYPE,PERIODIC)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVx,VTYPE,PERIODIC)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
       VTYPE=2  ! like u
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAx,VTYPE,PERIODIC)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAx(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
       VTYPE=3  ! like v
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAy,VTYPE,PERIODIC)   
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAy(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)   
 
     ENDIF
 # else
     VTYPE=2
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxx,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxx,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxx(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxx(1:Mloc,1:Nloc),VTYPE,ng)
     VTYPE=3
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vyy,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVyy,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vyy(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVyy(1:Mloc,1:Nloc),VTYPE,ng)
 
     VTYPE=1
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxy,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxy,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vxy,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVxy,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uxy(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUxy(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vxy(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVxy(1:Mloc,1:Nloc),VTYPE,ng)
 
       VTYPE=1  ! symetric in both direction
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ux,VTYPE)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUx,VTYPE)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vy,VTYPE)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVy,VTYPE)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Ux(1:Mloc,1:Nloc),VTYPE,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUx(1:Mloc,1:Nloc),VTYPE,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vy(1:Mloc,1:Nloc),VTYPE,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVy(1:Mloc,1:Nloc),VTYPE,ng)
       VTYPE=3  !like v
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uy,VTYPE)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUy,VTYPE)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Uy(1:Mloc,1:Nloc),VTYPE,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DUy(1:Mloc,1:Nloc),VTYPE,ng)
       Vtype=2  !like u
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vx,VTYPE)
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVx,VTYPE)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Vx(1:Mloc,1:Nloc),VTYPE,ng)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,DVx(1:Mloc,1:Nloc),VTYPE,ng)
       VTYPE=2  ! like u
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAx,VTYPE)
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAx(1:Mloc,1:Nloc),VTYPE,ng)
       VTYPE=3  ! like v
-      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAy,VTYPE)   
+      CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,ETAy(1:Mloc,1:Nloc),VTYPE,ng)   
 # endif
-   
-    
+       
 END SUBROUTINE EXCHANGE_DISPERSION
 
 !---------------------------------------------------------------------------------------
@@ -419,52 +424,53 @@ END SUBROUTINE EXCHANGE_DISPERSION
 !   08/19/2015 Choi, corrected segmentation fault, maybe memory leaking                                       
 !
 !---------------------------------------------------------------------------------------
-SUBROUTINE EXCHANGE
+SUBROUTINE EXCHANGE(ng)
     USE GLOBAL
     IMPLICIT NONE
     INTEGER :: VTYPE
 # if defined (CARTESIAN)
-    REAL(SP),DIMENSION(Mloc,Nloc) :: rMASK
+    REAL(SP),DIMENSION(1:Mloc,1:Nloc) :: rMASK
 # endif
+    INTEGER,INTENT(IN) :: ng
 
 # if defined (CARTESIAN)
     VTYPE=1
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
     IF(VISCOSITY_BREAKING) THEN
-	CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,AGE_BREAKING,VTYPE,PERIODIC)
+	CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,AGE_BREAKING(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     ENDIF
     
     !ykchoi (08.19.2015) :: new variable (WAVEMAKER_VIS) 	
     IF(VISCOSITY_BREAKING .OR. WAVEMAKER_VIS) THEN
-	CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,nu_break,VTYPE,PERIODIC)
+	CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,nu_break(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     ENDIF
 
     IF(VISCOSITY_BREAKING .OR. DIFFUSION_SPONGE .OR. WAVEMAKER_VIS)THEN
-      CALL PHI_COLL_VARIABLE_LENGTH(Mloc1,Nloc,Ibeg,Iend1,Jbeg,Jend,Nghost,P,VTYPE)
-      CALL PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc1,Ibeg,Iend,Jbeg,Jend1,Nghost,Q,VTYPE)
+      CALL PHI_COLL_VARIABLE_LENGTH(Mloc1,Nloc,Ibeg,Iend1,Jbeg,Jend,Nghost,P(Mloc1,Nloc),VTYPE,ng)
+      CALL PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc1,Ibeg,Iend,Jbeg,Jend1,Nghost,Q(Mloc,Nloc1),VTYPE,ng)
     ENDIF
 
-    rMASK = MASK ! for periodic boundary condition
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,rMASK,VTYPE,PERIODIC)  
-    MASK = rMASK  
+    rMASK(1:Mloc,1:Nloc) = MASK(1:Mloc,1:Nloc) ! for periodic boundary condition
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,rMASK(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)  
+    MASK(1:Mloc,1:Nloc) = rMASK(1:Mloc,1:Nloc)  
 
     VTYPE=2
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HU,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HU(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     VTYPE=3
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V,VTYPE,PERIODIC)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HV,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HV(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 # else
     VTYPE=1
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta(1:Mloc,1:Nloc),VTYPE,ng)
 
     VTYPE=2
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HU,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HU(1:Mloc,1:Nloc),VTYPE,ng)
     VTYPE=3
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V,VTYPE)
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HV,VTYPE)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V(1:Mloc,1:Nloc),VTYPE,ng)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,HV(1:Mloc,1:Nloc),VTYPE,ng)
 # endif
 
 ! etaR x mask is a wrong idea
@@ -481,17 +487,17 @@ SUBROUTINE EXCHANGE
      IF (filter_count > filter_interval) THEN
        filter_count =0
 
-       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK,Eta)
+       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc))
 
-       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK,U)
-       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK,V)
+       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc))
+       CALL SHAPIRO_3(Mloc,Nloc,Nghost,MASK(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc))
 
     VTYPE=1
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,Eta(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     VTYPE=2
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,U(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
     VTYPE=3
-    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V,VTYPE,PERIODIC)
+    CALL PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,V(1:Mloc,1:Nloc),VTYPE,PERIODIC,ng)
 
     H=Eta*Gamma3+Depth
 
@@ -518,7 +524,7 @@ END SUBROUTINE EXCHANGE
 !   07/09/2010 Fengyan Shi                                      
 !
 !-----------------------------------------------------------------------------------
-SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
+SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE,ng)
 
     USE PARAM
 
@@ -530,17 +536,19 @@ SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTY
     INTEGER,INTENT(IN) :: VTYPE
     INTEGER,INTENT(IN) :: Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost
     REAL(SP),INTENT(INOUT) :: PHI(Mloc,Nloc)
+    INTEGER,INTENT(IN) :: ng
 
       ! x-direction
 # if defined (PARALLEL)
     if ( n_west .eq. MPI_PROC_NULL ) then
 # endif
-
+	IF(ng==1)THEN
       DO J=Jbeg,Jend  
       DO K=1,Nghost
         PHI(K,J)=PHI(Ibeg+Nghost-K,J)
       ENDDO
       ENDDO
+	ENDIF
 
 # if defined (PARALLEL)
     endif
@@ -549,12 +557,13 @@ SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTY
 # if defined (PARALLEL)
     if ( n_east .eq. MPI_PROC_NULL ) then
 # endif
-
+	IF(ng==1)THEN
       DO J=Jbeg,Jend  
       DO K=1,Nghost
         PHI(Iend+K,J)=PHI(Iend-K+1,J)
       ENDDO
       ENDDO
+	ENDIF
 
 # if defined (PARALLEL)
     endif
@@ -565,13 +574,13 @@ SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTY
 # if defined (PARALLEL)
     if ( n_suth .eq. MPI_PROC_NULL ) then
 # endif
-
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=PHI(I,Jbeg+Nghost-K)
       ENDDO
       ENDDO
-
+	ENDIF
 # if defined (PARALLEL)
     endif
 # endif
@@ -579,13 +588,13 @@ SUBROUTINE PHI_COLL_VARIABLE_LENGTH(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTY
 # if defined (PARALLEL)
     if ( n_nrth .eq. MPI_PROC_NULL ) then
 # endif
-
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=PHI(I,Jend-K+1)
       ENDDO
       ENDDO
-
+	ENDIF
 # if defined (PARALLEL)
     endif
 # endif
@@ -608,9 +617,9 @@ END SUBROUTINE PHI_COLL_VARIABLE_LENGTH
 !
 !-------------------------------------------------------------------------------------
 # if defined (CARTESIAN)
-SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE,PERIODIC)
+SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE,PERIODIC,ng)
 # else
-SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
+SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE,ng)
 # endif
     USE PARAM
 # if defined (COUPLING)
@@ -630,6 +639,7 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
     INTEGER,INTENT(IN) :: VTYPE
     INTEGER,INTENT(IN) :: Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost
     REAL(SP),INTENT(INOUT) :: PHI(Mloc,Nloc)
+    INTEGER,INTENT(IN) :: ng
 # if defined (CARTESIAN)
     LOGICAL :: PERIODIC
 # endif
@@ -641,6 +651,7 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
     REAL(sp) :: myvar,mybeta
 # endif
 
+	IF (ng==1) THEN
 ! periodic first because it is not related to VTYPE
 # if defined (CARTESIAN)
       IF(PERIODIC)THEN
@@ -722,6 +733,7 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 
 # endif 
 ! end cartesian
+    ENDIF ! ng==1
 
 ! I added coupling condition 10/14/2012
 
@@ -734,11 +746,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend  
       DO K=1,Nghost
         PHI(K,J)=PHI(Ibeg+Nghost-K,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -752,11 +766,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend  
       DO K=1,Nghost
         PHI(Iend+K,J)=PHI(Iend-K+1,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -775,11 +791,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=PHI(I,Jbeg+Nghost-K)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -793,11 +811,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=PHI(I,Jend-K+1)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -820,11 +840,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(K,J)=-PHI(Ibeg+Nghost-K,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -838,11 +860,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(Iend+K,J)=-PHI(Iend-K+1,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -862,11 +886,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=PHI(I,Jbeg+Nghost-K)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -880,11 +906,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=PHI(I,Jend-K+1)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -907,11 +935,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(K,J)=PHI(Ibeg+Nghost-K,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -925,11 +955,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(Iend+K,J)=PHI(Iend-K+1,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -949,11 +981,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=-PHI(I,Jbeg+Nghost-K)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -967,11 +1001,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=-PHI(I,Jend-K+1)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -993,11 +1029,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(K,J)=ZERO
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1011,11 +1049,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(Iend+K,J)=ZERO
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1030,11 +1070,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=ZERO
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1048,11 +1090,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=ZERO
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1072,11 +1116,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(K,J)=PHI(Ibeg+Nghost-K,J)
        ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1090,11 +1136,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(Iend+K,J)=PHI(Iend-K+1,J)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1110,11 +1158,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=PHI(I,Jbeg+Nghost-K)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1128,11 +1178,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=PHI(I,Jend-K+1)
       ENDDO
       ENDDO
+	ENDIF
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1151,11 +1203,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_WEST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(K,J)=-PHI(Ibeg+Nghost-K,J)
       ENDDO
-      ENDDO 
+      ENDDO
+	ENDIF 
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1169,11 +1223,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_EAST)THEN
 # endif
+	IF(ng==1)THEN
       DO J=Jbeg,Jend
       DO K=1,Nghost
         PHI(Iend+K,J)=-PHI(Iend-K+1,J)
       ENDDO
-      ENDDO 
+      ENDDO
+	ENDIF 
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1188,11 +1244,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_SOUTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,K)=-PHI(I,Jbeg+Nghost-K)
       ENDDO
-      ENDDO   
+      ENDDO
+	ENDIF   
 # if defined (COUPLING)
     ENDIF
 # endif  
@@ -1206,11 +1264,13 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
 # if defined (COUPLING)
     IF(.NOT.IN_DOMAIN_NORTH)THEN
 # endif
+	IF(ng==1)THEN
       DO I=1,Mloc
       DO K=1,Nghost
         PHI(I,Jend+K)=-PHI(I,Jend-K+1)
       ENDDO
-      ENDDO     
+      ENDDO
+	ENDIF     
 # if defined (COUPLING)
     ENDIF
 # endif
@@ -1222,10 +1282,7 @@ SUBROUTINE PHI_COLL(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,Nghost,PHI,VTYPE)
     ENDIF ! end vtype=6
 
 # if defined (PARALLEL)
-    call phi_exch (PHI)
+    call phi_exch (PHI(1:Mloc,1:Nloc))  !AMR 1:Mloc, 1:Nloc
 # endif
 
 END SUBROUTINE PHI_COLL
-
-
-

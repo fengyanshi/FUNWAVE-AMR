@@ -59,9 +59,10 @@
 !                   corrected U1p,V1p, V2, V3 and omega_1 terms
 !
 !-------------------------------------------------------------------------------------
-SUBROUTINE CAL_DISPERSION
+SUBROUTINE CAL_DISPERSION(ng)
      USE GLOBAL
      IMPLICIT NONE
+     INTEGER, INTENT(IN) :: ng
 
      REAL(SP),Dimension(Mloc,Nloc) :: DU,DV,DUt,DVt
      REAL(SP) :: UxxVxy,UxyVyy,HUxxHVxy,HUxyHVyy, &
@@ -73,30 +74,67 @@ SUBROUTINE CAL_DISPERSION
      REAL(SP),Dimension(Mloc,Nloc) :: omega            
 # endif
     
+# if defined(CARTESIAN)
 ! uxx
-    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,U,Uxx)
+    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX,U(1:Mloc,1:Nloc),Uxx(1:Mloc,1:Nloc))
 ! uxy
-    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,U,Uxy)
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX,DY,U(1:Mloc,1:Nloc),Uxy(1:Mloc,1:Nloc))
 ! vxy
-    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,V,Vxy)
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX,DY,V(1:Mloc,1:Nloc),Vxy(1:Mloc,1:Nloc))
 ! vyy
-    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,V,Vyy)
+    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DY,V(1:Mloc,1:Nloc),Vyy(1:Mloc,1:Nloc))
+# else
+! uxx
+    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),U(1:Mloc,1:Nloc),Uxx(1:Mloc,1:Nloc))
+! uxy
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),  &
+	   U(1:Mloc,1:Nloc),Uxy(1:Mloc,1:Nloc))
+! vxy
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),  &
+	   V(1:Mloc,1:Nloc),Vxy(1:Mloc,1:Nloc))
+! vyy
+    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,   &
+         MASK9(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),Vyy(1:Mloc,1:Nloc))
+# endif
 
 # if defined (CARTESIAN)
 ! gamma2.ne.0
     IF(Gamma2>ZERO)THEN
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,U,Ux)
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,V,Vx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,U,Uy)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,V,Vy)
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,Eta,ETAx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,Eta,ETAy)
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,U(1:Mloc,1:Nloc),Ux(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,V(1:Mloc,1:Nloc),Vx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,U(1:Mloc,1:Nloc),Uy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,V(1:Mloc,1:Nloc),Vy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,Eta(1:Mloc,1:Nloc),ETAx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,Eta(1:Mloc,1:Nloc),ETAy(1:Mloc,1:Nloc))
     ELSEIF(SHOW_BREAKING)THEN
 # else
     IF(SHOW_BREAKING)THEN
 # endif
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,Eta,ETAx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,Eta,ETAy)
+
+# if defined(CARTESIAN)
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,Eta(1:Mloc,1:Nloc),ETAx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,Eta(1:Mloc,1:Nloc),ETAy(1:Mloc,1:Nloc))
+# else
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),ETAx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc),ETAy(1:Mloc,1:Nloc))
+# endif
     ENDIF
 
 ! DU DV
@@ -147,41 +185,82 @@ SUBROUTINE CAL_DISPERSION
 
     ENDIF
 
+# if defined(CARTESIAN)
 ! DUxx
-    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DU,DUxx)
+    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX,DU(1:Mloc,1:Nloc),DUxx(1:Mloc,1:Nloc))
 ! DUxy
-    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,DU,DUxy)
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX,DY,DU(1:Mloc,1:Nloc),DUxy(1:Mloc,1:Nloc))
 ! DVxy
-    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,DV,DVxy)
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX,DY,DV(1:Mloc,1:Nloc),DVxy(1:Mloc,1:Nloc))
 ! DVyy
-    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,DV,DVyy)
+    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DY,DV(1:Mloc,1:Nloc),DVyy(1:Mloc,1:Nloc))
+
+# else
+! DUxx
+    CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),DU(1:Mloc,1:Nloc),DUxx(1:Mloc,1:Nloc))
+! DUxy
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),  &
+	   DU(1:Mloc,1:Nloc),DUxy(1:Mloc,1:Nloc))
+! DVxy
+    CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),  &
+	   DV(1:Mloc,1:Nloc),DVxy(1:Mloc,1:Nloc))
+! DVyy
+    CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+         MASK9(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),DV(1:Mloc,1:Nloc),DVyy(1:Mloc,1:Nloc))
+# endif
       
 # if defined (CARTESIAN)
     IF(Gamma2>ZERO)THEN
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DU,DUx)
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DV,DVx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,DU,DUy)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,DV,DVy)
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,Ut,Utx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,Vt,Vty)
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DU(1:Mloc,1:Nloc),DUx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DV(1:Mloc,1:Nloc),DVx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,DU(1:Mloc,1:Nloc),DUy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,DV(1:Mloc,1:Nloc),DVy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,Ut(1:Mloc,1:Nloc),Utx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,Vt(1:Mloc,1:Nloc),Vty(1:Mloc,1:Nloc))
 
-     CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,Ut,Utxx)
-     CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,Vt,Vtyy)
-     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,Ut,Utxy)
-     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,Vt,Vtxy)
+     CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,Ut(1:Mloc,1:Nloc),Utxx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,Vt(1:Mloc,1:Nloc),Vtyy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DY,Ut(1:Mloc,1:Nloc),Utxy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DY,Vt(1:Mloc,1:Nloc),Vtxy(1:Mloc,1:Nloc))
 
-     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DUt,DUtx)
-     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,DVt,DVty)
+     CALL DERIVATIVE_X(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DUt(1:Mloc,1:Nloc),DUtx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_Y(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,DVt(1:Mloc,1:Nloc),DVty(1:Mloc,1:Nloc))
 
-     CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DUt,DUtxx)
-     CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DY,DVt,DVtyy)
-     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,DUt,DUtxy)
-     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,MASK9,DX,DY,DVt,DVtxy)
+     CALL DERIVATIVE_XX(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DUt(1:Mloc,1:Nloc),DUtxx(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_YY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DY,DVt(1:Mloc,1:Nloc),DVtyy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DY,DUt(1:Mloc,1:Nloc),DUtxy(1:Mloc,1:Nloc))
+     CALL DERIVATIVE_XY(Mloc,Nloc,Ibeg,Iend,Jbeg,Jend,  &
+          MASK9(1:Mloc,1:Nloc),DX,DY,DVt(1:Mloc,1:Nloc),DVtxy(1:Mloc,1:Nloc))
     ENDIF
 # endif
       
 ! this may affect parallel version
 ! I added coupling boundary 10/14/2012
+
+! BOUNDARY CONDITION FOR NG=1
+    IF(ng.eq.1)THEN
 
 !  boundary conditions
 # if defined (PARALLEL)
@@ -276,8 +355,9 @@ SUBROUTINE CAL_DISPERSION
 # if defined (PARALLEL)
     endif  
 # endif
-     
-    CALL EXCHANGE_DISPERSION
+
+    ENDIF !end ng=1
+    CALL EXCHANGE_DISPERSION(ng)
      
 ! calculate V1p  without nonlinear dispersion
      DO J=1,Nloc
@@ -286,7 +366,28 @@ SUBROUTINE CAL_DISPERSION
        U4(I,J)=(1.0_SP/3.0_SP-Beta_1+0.5_SP*Beta_1*Beta_1)*DEPTH(I,J)*DEPTH(I,J)*(Uxx(I,J)+Vxy(I,J)) &
                 +(Beta_1-1.0_SP/2.0_SP)*DEPTH(I,J)*(DUxx(I,J)+DVxy(I,J))
        V4(I,J)=(1.0_SP/3.0_SP-Beta_1+0.5_SP*Beta_1*Beta_1)*DEPTH(I,J)*DEPTH(I,J)*(Uxy(I,J)+Vyy(I,J)) &
-                +(Beta_1-1.0_SP/2.0_SP)*DEPTH(I,J)*(DUxy(I,J)+DVyy(I,J))      
+                +(Beta_1-1.0_SP/2.0_SP)*DEPTH(I,J)*(DUxy(I,J)+DVyy(I,J))
+	 
+	 !------[ykchoi (04/14/2017)
+	 IF(gamma2>ZERO)THEN
+	   UxxVxy = Uxx(I,J) + Vxy(I,J)
+	   UxyVyy = Uxy(I,J) + Vyy(I,J)
+
+	   HUxxHVxy = DUxx(I,J) + DVxy(I,J)
+	   HUxyHVyy = DUxy(I,J) + DVyy(I,J)
+
+	   rh = Depth(I,J)
+	   reta = Eta(I,J)
+
+	   ken1 = ( 1.0_SP/6.0_SP - Beta_1 + Beta_1*Beta_1 )*rh*reta*Beta_2   &
+              + ( 1.0_SP/2.0_SP*Beta_1*Beta_1 - 1.0_SP/6.0_SP )*reta*reta*Beta_2*Beta_2
+
+         ken2 = ( Beta_1 - 1.0_SP/2.0_SP )*reta*Beta_2
+
+	   U4(I,J) = U4(I,J) + gamma2*MASK9(I,J)*( ken1*UxxVxy + ken2*HUxxHVxy )
+	   V4(I,J) = V4(I,J) + gamma2*MASK9(I,J)*( ken1*UxyVyy + ken2*HUxyHVyy )
+	 ENDIF
+	 !------ykchoi (04/14/2017)]
 # endif
 
 # if defined (ZALPHA)
@@ -376,14 +477,16 @@ SUBROUTINE CAL_DISPERSION
         rhy=(Depth(I,J+1)-Depth(I,J-1))/2.0_SP/DY
         reta=Eta(I,J)
 
-         ken1=(1.0_SP/6.0_SP-Beta_1+Beta_1*Beta_1)*rh*reta*Beta_2  &
-                +(1.0_SP/2.0_SP*Beta_1*Beta_1-1.0_SP/6.0_SP)*reta*reta*Beta_2*Beta_2
-         ken2=(Beta_1-1.0_SP/2.0_SP)*reta*Beta_2
+	  !------[ykchoi (04/14/2017)
+        ! ken1=(1.0_SP/6.0_SP-Beta_1+Beta_1*Beta_1)*rh*reta*Beta_2  &
+        !        +(1.0_SP/2.0_SP*Beta_1*Beta_1-1.0_SP/6.0_SP)*reta*reta*Beta_2*Beta_2
+        ! ken2=(Beta_1-1.0_SP/2.0_SP)*reta*Beta_2
 
-        U4(I,J)=U4(I,J)+gamma2*MASK9(I,J)*(ken1*UxxVxy &
-                +ken2*HUxxHVxy)
-        V4(I,J)=V4(I,J)+gamma2*MASK9(I,J)*(ken1*UxyVyy &
-                +ken2*HUxyHVyy)
+        !U4(I,J)=U4(I,J)+gamma2*MASK9(I,J)*(ken1*UxxVxy &
+        !        +ken2*HUxxHVxy)
+        !V4(I,J)=V4(I,J)+gamma2*MASK9(I,J)*(ken1*UxyVyy &
+        !        +ken2*HUxyHVyy)
+	  !------ykchoi (04/14/2017)]
 
         U1pp(I,J)=-reta*Beta_2*ETAx(I,J)*Beta_2*(Utx(I,J)+Vty(I,J)) - 0.5_SP*reta*reta*Beta_2*Beta_2*(Utxx(I,J)+Vtxy(I,J))&
                   -ETAx(I,J)*Beta_2*(DUtx(I,J)+DVty(I,J)) -reta*Beta_2*(DUtxx(I,J)+DVtxy(I,J))

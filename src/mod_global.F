@@ -52,6 +52,7 @@
 MODULE GLOBAL
        USE PARAM
        IMPLICIT NONE
+
        SAVE
 
 # if defined (PARALLEL)
@@ -66,6 +67,7 @@ MODULE GLOBAL
        INTEGER, DIMENSION(2) :: dims, coords
        LOGICAL, DIMENSION(2) :: periods
        LOGICAL :: reorder = .true.
+	 INTEGER :: nprocs    !ykchoi AMR
 # endif
        INTEGER :: px,py
 
@@ -73,6 +75,34 @@ MODULE GLOBAL
        INTEGER :: NumberStations
        INTEGER,DIMENSION(:),ALLOCATABLE :: ista,jsta,nsta
        REAL(SP):: PLOT_INTV_STATION,PLOT_COUNT_STATION
+
+! -------------- NESTING (AMR) grid numbers  !ykchoi
+       INTEGER :: NumGrid =1
+       INTEGER :: MaxDimX,MaxDimY,MaxDimX1,MaxDimY1
+       INTEGER,DIMENSION(:),ALLOCATABLE :: GridDimX,GridDimY,&
+             RATIO_SPACING,TOTALRATIO_SPACING
+       LOGICAL,DIMENSION(:),ALLOCATABLE  :: IsPrint
+       INTEGER,DIMENSION(:),ALLOCATABLE :: MboxRef,NboxRef
+ 
+       LOGICAL,DIMENSION(:),ALLOCATABLE :: START_GRID	 
+	 CHARACTER(LEN=80) SubGrid_FILE
+
+       REAL(SP),DIMENSION(:,:,:),ALLOCATABLE :: &
+	            U_NESTING_EAST,  V_NESTING_EAST,  Z_NESTING_EAST, &
+                  U_NESTING_WEST,  V_NESTING_WEST,  Z_NESTING_WEST, &
+                  U_NESTING_SOUTH, V_NESTING_SOUTH, Z_NESTING_SOUTH, &
+                  U_NESTING_NORTH, V_NESTING_NORTH, Z_NESTING_NORTH
+
+       REAL(SP),DIMENSION(:,:,:),ALLOCATABLE :: &
+	            U_NESTING_EAST_PAR,  V_NESTING_EAST_PAR,  Z_NESTING_EAST_PAR,  &
+                  U_NESTING_WEST_PAR,  V_NESTING_WEST_PAR,  Z_NESTING_WEST_PAR,  &
+                  U_NESTING_SOUTH_PAR, V_NESTING_SOUTH_PAR, Z_NESTING_SOUTH_PAR,  &
+                  U_NESTING_NORTH_PAR, V_NESTING_NORTH_PAR, Z_NESTING_NORTH_PAR
+# if defined (PARALLEL)
+       INTEGER,DIMENSION(:,:,:),ALLOCATABLE :: &
+            EastParentID, WestParentID, SouthParentID, NorthParentID
+# endif
+! --------------
 
 ! timer
        REAL(SP) :: tbegin,tend
@@ -94,10 +124,10 @@ MODULE GLOBAL
        CHARACTER(LEN=80) DY_FILE
        CHARACTER(LEN=80) Coriolis_FILE
        CHARACTER(LEN=80) OBSTACLE_FILE
-       CHARACTER(LEN=80) BREAKWATER_FILE
        CHARACTER(LEN=80) RESULT_FOLDER
        CHARACTER(LEN=80) STATIONS_FILE
        CHARACTER(LEN=80) WaveMaker
+       CHARACTER(LEN=80) DepthFormat
        CHARACTER(LEN=80) Time_Scheme
        CHARACTER(LEN=80) CONSTR
        CHARACTER(LEN=80) HIGH_ORDER
@@ -106,7 +136,6 @@ MODULE GLOBAL
        !ykchoi(14.12.24)]
 
        LOGICAL :: NO_MASK_FILE = .TRUE.
-       LOGICAL :: NO_UV_FILE = .TRUE.
 
         CHARACTER(LEN=14)::FORMAT_LEN=' '
 
@@ -126,8 +155,7 @@ MODULE GLOBAL
        REAL(SP) :: Lon_West,Lat_South,Dphi,Dtheta
 # endif
        REAL(SP)::  DT,TIME,TOTAL_TIME,PLOT_INTV,PLOT_COUNT,&
-                  SCREEN_INTV,SCREEN_COUNT, &
-                   DT_fixed
+                  SCREEN_INTV,SCREEN_COUNT
        REAL(SP) :: HOTSTART_INTV,HOTSTART_COUNT
        INTEGER :: icount=0  ! for output file number
        INTEGER :: icount_mean=0  ! for output mean file number
@@ -139,13 +167,6 @@ MODULE GLOBAL
        REAL(SP) :: CFL=0.15_SP
        REAL(SP) :: FroudeCap=10.0_SP
        REAL(SP) :: SWE_ETA_DEP=0.7_SP
-
-       LOGICAL :: BATHY_CORRECTION = .FALSE.
-       LOGICAL :: BREAKWATER = .FALSE.
-
-       REAL(SP),DIMENSION(:,:),ALLOCATABLE :: &
-                BreakWaterWidth,CD_breakwater
-
 
 ! switch for dispersion
 !   gamma1 is for extra M term
@@ -164,7 +185,6 @@ MODULE GLOBAL
        LOGICAL :: DISP_TIME_LEFT=.FALSE. 
        LOGICAL :: StretchGrid = .FALSE.
                  ! put time derivative dispersion term on left
-       LOGICAL :: FIXED_DT = .FALSE.
 
 ! some local variables
        REAL(SP),DIMENSION(:,:),ALLOCATABLE :: &
@@ -221,7 +241,6 @@ MODULE GLOBAL
 ! wetting and drying
         INTEGER,DIMENSION(:,:),ALLOCATABLE :: MASK,MASK_STRUC,MASK9
 ! wave maker
-        LOGICAL :: EqualEnergy = .FALSE.
         REAL(SP)::AMP_SOLI,DEP_SOLI,LAG_SOLI, CPH_SOLI,XWAVEMAKER, &
                   Xc,Yc, WID,Xc_WK,Tperiod,AMP_WK,DEP_WK,Theta_WK, &
                   rlamda,Time_ramp,D_gen,Beta_gen,Width_WK,Delta_WK,&
@@ -233,7 +252,7 @@ MODULE GLOBAL
         REAL(SP) :: FreqMin,FreqMax,FreqPeak,GammaTMA,Hmo,ThetaPeak,&
                     Sigma_Theta
         REAL(SP),DIMENSION(:,:,:),ALLOCATABLE ::Cm,Sm
-        INTEGER :: Nfreq,Ntheta 
+        INTEGER :: Nfreq=80, Ntheta=121 
         REAL(SP)::x1_Nwave = 5.0, &
                   x2_Nwave = 5.0, &
                   a0_Nwave = 1.0, &
@@ -324,7 +343,7 @@ MODULE GLOBAL
                   OUT_Fx=.FALSE., OUT_Fy=.FALSE.,&
                   OUT_Gx=.FALSE., OUT_Gy=.FALSE.,&
                   OUT_MASK9=.FALSE., OUT_DEPTH=.FALSE., &
-                  OUT_TMP=.FALSE., OUT_AGE=.FALSE.,OUT_NU=.FALSE., &
+                  OUT_TMP=.FALSE., OUT_AGE=.FALSE., &
                   OUT_Hmax=.FALSE., &
                   OUT_Hmin=.FALSE., &
                   OUT_Umax=.FALSE.

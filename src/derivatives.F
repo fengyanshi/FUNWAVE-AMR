@@ -133,8 +133,13 @@ SUBROUTINE DERIVATIVE_Y(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DY,Uin,Uout)
      INTEGER,DIMENSION(M,N),INTENT(IN) :: MASK
      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Uout
 
-     DO J=Jbeg,Jend
-     DO I=Ibeg,Iend
+! [ykchoi (09/July/2017) 
+! modification for FUNWAVE-TVD nesting
+      !DO J=Jbeg,Jend
+      !DO I=Ibeg,Iend
+     DO J=2,Jend+2
+     DO I=2,Iend+2
+! ---------- ykchoi]
 # if defined (CARTESIAN)
        Uout(I,J)= (Uin(I,J+1)   &
                  -Uin(I,J-1))/DY/2.0_SP*MASK(I,J)
@@ -143,7 +148,11 @@ SUBROUTINE DERIVATIVE_Y(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DY,Uin,Uout)
                  -Uin(I,J-1))/DY(I,J)/2.0_SP*MASK(I,J)
 # endif
      ENDDO
+     Uout(1,J) = Uout(2,J)                 !ykchoi(09/July/2017) 
+     Uout(Iend+3,J) = Uout(Iend+2,J)
      ENDDO
+     Uout(1:Iend+3,1) = Uout(1:Iend+3,2)   !ykchoi(09/July/2017)
+     Uout(1:Iend+3,Jend+3) = Uout(1:Iend+3,Jend+2)
 
 END SUBROUTINE DERIVATIVE_Y
 
@@ -168,8 +177,13 @@ SUBROUTINE DERIVATIVE_X(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,Uin,Uout)
      INTEGER,DIMENSION(M,N),INTENT(IN) :: MASK
      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Uout
 
-     DO J=Jbeg,Jend
-     DO I=Ibeg,Iend
+! [ykchoi (09/July/2017) 
+! modification for FUNWAVE-TVD nesting
+      !DO J=Jbeg,Jend
+      !DO I=Ibeg,Iend
+     DO J=2,Jend+2
+     DO I=2,Iend+2
+! ---------- ykchoi]
 # if defined (CARTESIAN)
        Uout(I,J)= (Uin(I+1,J)    &
                  -Uin(I-1,J))/DX/2.0_SP*MASK(I,J)
@@ -178,7 +192,11 @@ SUBROUTINE DERIVATIVE_X(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,Uin,Uout)
                  -Uin(I-1,J))/DX(I,J)/2.0_SP*MASK(I,J)
 # endif
      ENDDO
+     Uout(1,J) = Uout(2,J)                 !ykchoi(09/July/2017) 
+     Uout(Iend+3,J) = Uout(Iend+2,J)
      ENDDO
+     Uout(1:Iend+3,1) = Uout(1:Iend+3,2)   !ykchoi(09/July/2017)
+     Uout(1:Iend+3,Jend+3) = Uout(1:Iend+3,Jend+2)
 
 END SUBROUTINE DERIVATIVE_X
 
@@ -202,8 +220,13 @@ SUBROUTINE DERIVATIVE_YY(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DY,Uin,Uout)
      INTEGER,DIMENSION(M,N),INTENT(IN) :: MASK
      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Uout
 
-     DO J=Jbeg,Jend
-     DO I=Ibeg,Iend
+! [ykchoi (09/July/2017) 
+! modification for FUNWAVE-TVD nesting      
+	!DO J=Jbeg,Jend
+      !DO I=Ibeg,Iend
+     DO J=2,Jend+2
+     DO I=2,Iend+2
+! ---------- ykchoi]
 # if defined (CARTESIAN)
        Uout(I,J)= (Uin(I,J+1)-2.0_SP*Uin(I,J) & 
                  +Uin(I,J-1))/DY/DY*MASK(I,J)
@@ -212,7 +235,11 @@ SUBROUTINE DERIVATIVE_YY(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DY,Uin,Uout)
                  +Uin(I,J-1))/DY(I,J)/DY(I,J)*MASK(I,J)
 # endif
      ENDDO
+     Uout(1,J) = Uout(2,J)                 !ykchoi(09/July/2017) 
+     Uout(Iend+3,J) = Uout(Iend+2,J)
      ENDDO
+     Uout(1:Iend+3,1) = Uout(1:Iend+3,2)   !ykchoi(09/July/2017)
+     Uout(1:Iend+3,Jend+3) = Uout(1:Iend+3,Jend+2)
 
 END SUBROUTINE DERIVATIVE_YY
 
@@ -236,8 +263,13 @@ SUBROUTINE DERIVATIVE_XY(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,DY,Uin,Uout)
      INTEGER,DIMENSION(M,N),INTENT(IN) :: MASK
      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Uout
 
-     DO J=Jbeg,Jend
-     DO I=Ibeg,Iend
+! [ykchoi (09/July/2017) 
+! modification for FUNWAVE-TVD nesting
+      !DO J=Jbeg,Jend
+      !DO I=Ibeg,Iend
+     DO J=2,Jend+2
+     DO I=2,Iend+2
+! ---------- ykchoi]
 # if defined (CARTESIAN)
        tmp1=(Uin(I+1,J+1)-Uin(I+1,J-1))/2.0_SP/DY
        tmp2=(Uin(I-1,J+1)-Uin(I-1,J-1))/2.0_SP/DY
@@ -248,7 +280,11 @@ SUBROUTINE DERIVATIVE_XY(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,DY,Uin,Uout)
        Uout(I,J)= (tmp1-tmp2)/2.0_SP/DX(I,J)*MASK(I,J)
 # endif
      ENDDO
+     Uout(1,J) = Uout(2,J)                 !ykchoi(09/July/2017) 
+     Uout(Iend+3,J) = Uout(Iend+2,J)
      ENDDO
+     Uout(1:Iend+3,1) = Uout(1:Iend+3,2)   !ykchoi(09/July/2017)
+     Uout(1:Iend+3,Jend+3) = Uout(1:Iend+3,Jend+2)
 
 END SUBROUTINE DERIVATIVE_XY
 
@@ -274,8 +310,13 @@ SUBROUTINE DERIVATIVE_XX(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,Uin,Uout)
      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Uout
 
 ! I assume no 2nd derivative 
-     DO J=Jbeg,Jend
-     DO I=Ibeg,Iend
+! [ykchoi (09/July/2017) 
+! modification for FUNWAVE-TVD nesting
+      !DO J=Jbeg,Jend
+      !DO I=Ibeg,Iend
+     DO J=2,Jend+2
+     DO I=2,Iend+2
+! ---------- ykchoi]
 # if defined (CARTESIAN)
        Uout(I,J)= (Uin(I+1,J)-2.0_SP*Uin(I,J) & 
                  +Uin(I-1,J))/DX/DX*MASK(I,J)
@@ -284,7 +325,11 @@ SUBROUTINE DERIVATIVE_XX(M,N,Ibeg,Iend,Jbeg,Jend,MASK,DX,Uin,Uout)
                  +Uin(I-1,J))/DX(I,J)/DX(I,J)*MASK(I,J)
 # endif
      ENDDO
+     Uout(1,J) = Uout(2,J)                 !ykchoi(09/July/2017) 
+     Uout(Iend+3,J) = Uout(Iend+2,J)
      ENDDO
+     Uout(1:Iend+3,1) = Uout(1:Iend+3,2)   !ykchoi(09/July/2017)
+     Uout(1:Iend+3,Jend+3) = Uout(1:Iend+3,Jend+2)
 
 END SUBROUTINE DERIVATIVE_XX
 

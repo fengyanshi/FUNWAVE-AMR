@@ -1,7 +1,7 @@
 #-----------BEGIN MAKEFILE-------------------------------------------------
             SHELL         = /bin/sh
             DEF_FLAGS     = -P -C -traditional 
-            EXEC          = mytvd
+            EXEC          = mytvd3_nest
 #==========================================================================
 #--------------------------------------------------------------------------
 #        PRECISION          DEFAULT PRECISION: SINGLE                     
@@ -12,23 +12,20 @@
             FLAG_2 = -DPARALLEL
             FLAG_3 = -DSAMPLES
             FLAG_4 = -DCARTESIAN
-#              FLAG_6 = -DINTEL
+              FLAG_6 = -DINTEL
 #             FLAG_7 = -DMIXING
 #             FLAG_8 = -DCOUPLING
 #             FLAG_9 = -DZALPHA
 #             FLAG_10 = -DMANNING
 #             FLAG_11 = -DSPHERICAL_IJ_STATION
-#              FLAG_12 = -DVESSEL
-#              FLAG_13 = -DVIS_KENNEDY
-#              FLAG_14 = -DVESSEL_PANEL_SOURCE
-#              FLAG_15 = -DREALISTIC_VESSEL_BODY
+
 #--------------------------------------------------------------------------
 #  mpi defs 
 #--------------------------------------------------------------------------
          CPP      = /usr/bin/cpp 
          CPPFLAGS = $(DEF_FLAGS)
-         FC       = mpif90
-#         FC        = /usr/local/mpi/intel/openmpi-1.8.4/bin/mpif90
+#         FC       = mpif90
+         FC        = /usr/local/mpi/intel/openmpi-1.8.4_14/bin/mpif90
          DEBFLGS  = 
          OPT      = 
          CLIB     = 
@@ -68,9 +65,9 @@
 #  FUNWAVE-TVD Source Code.
 #--------------------------------------------------------------------------
 
-MODS  = mod_param.F mod_global.F mod_input.F mod_vessel.F mod_bathy_correction.F \
+MODS  = mod_param.F	mod_global.F mod_input.F mod_local.F mod_vessel.F \
 
-MAIN  = main.F bc.F fluxes.F init.F io.F tridiagnal.F       \
+MAIN  = master.F main.F bc.F bc_nesting.F fluxes.F init.F io.F tridiagnal.F \
         breaker.F derivatives.F dispersion.F etauv_solver.F \
         sponge.F sources.F masks.F parallel.F statistics.F \
         wavemaker.F mixing.F nesting.F misc.F samples.F\

@@ -56,8 +56,8 @@ SUBROUTINE UPDATE_MASK
 ! for the serial code, MASK at ghost cells keep no change
 
 #if defined(PARALLEL)
-     call phi_int_exch(MASK)
-     call phi_int_exch(MASK9)
+     call phi_int_exch(MASK(1:Mloc,1:Nloc))
+     call phi_int_exch(MASK9(1:Mloc,1:Nloc))
 #endif
 
      DO J=Jbeg-2,Jend+2
@@ -137,8 +137,8 @@ SUBROUTINE UPDATE_MASK
      ENDDO
   
 # if defined(PARALLEL)
-     CALL PHI_INT_EXCH(MASK)
-     CALL PHI_INT_EXCH(MASK9)
+     CALL PHI_INT_EXCH(MASK(1:Mloc,1:Nloc))
+     CALL PHI_INT_EXCH(MASK9(1:Mloc,1:Nloc))
 # endif
 
 END SUBROUTINE UPDATE_MASK

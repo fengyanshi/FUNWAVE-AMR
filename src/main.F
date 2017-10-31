@@ -1,376 +1,549 @@
-!------------------------------------------------------------------------------------
-!
-!      FILE main.F
-!
-!      This file is part of the FUNWAVE-TVD program under the Simplified BSD license
-!
-!-------------------------------------------------------------------------------------
-! 
-!    Copyright (c) 2016, FUNWAVE Development Team
-!
-!    (See http://www.udel.edu/kirby/programs/funwave/funwave.html
-!     for Development Team membership)
-!
-!    All rights reserved.
-!
-!    FUNWAVE_TVD is free software: you can redistribute it and/or modify
-!    it under the terms of the Simplified BSD License as released by
-!    the Berkeley Software Distribution (BSD).
-!
-!    Redistribution and use in source and binary forms, with or without
-!    modification, are permitted provided that the following conditions are met:
-!
-!    1. Redistributions of source code must retain the above copyright notice, this
-!       list of conditions and the following disclaimer.
-!    2. Redistributions in binary form must reproduce the above copyright notice,
-!    this list of conditions and the following disclaimer in the documentation
-!    and/or other materials provided with the distribution.
-!
-!    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-!    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-!    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-!    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-!    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-!    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-!    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-!    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-!    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-!    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-!  
-!    The views and conclusions contained in the software and documentation are those
-!    of the authors and should not be interpreted as representing official policies,
-!    either expressed or implied, of the FreeBSD Project.
-!  
-!-------------------------------------------------------------------------------------
-Program FUNWAVE_TVD
-!-------------------------------------------------------------------------------------
-!    VERSION 3.0
-!
-!    MAIN - READ_INPUT
-!         - INDEX
-!         - ALLOCATE_VARIABLES
-!         - INITIALIZATION 
-!         DO LOOP
-!             - VARIABLE_UPDATING
-!             - EXCHANGE
-!             - ESTIMATE_DT
-!             - RUNGE-KUTTA
-!             - DISPERSION
-!             - FLUXES          
-!             - SourceTerms      
-!             - ESTIMATE_HUV
-!             - EXCHANGE 
-!             - FLUXES                 
-!             - SourceTerms again
-!
-!             - STATISTICS
-!             - PREVIEW
-!          ENDDO LOOP
-!-------------------------------------------------------------------------------------
-! ** OPEN FILES **
-!  (1): read input, (2): output, (3): log, (4): !write/read hotstart
-!-------------------------------------------------------------------------------------
-! ** HOT START DATA **
-!   NOTE: read input.txt first, if HOT_START, then read  
-        ! -- dimension
-! Mloc,Nloc,Mloc1,Nloc1
-! Nghost
-! Ibeg,Iend,Jbeg,Jend,Iend1,Jend1
-!   NOTE: need to confirm if the saved data is consistent with input.txt
-        ! -- time
-! TIME
-! TOTAL_TIME
-! PLOT_INTV
-! PLOT_COUNT
-! SCREEN_INTV
-! SCREEN_COUNT
-! HOTSTART_INTV
-! ICOUNT
-        ! spacing
-! DX,DY
-        ! -- physics
-! DISPERSION
-! Gamma1
-! a1,a2,b1,b2
-! SWE_ETA_DEP
-        ! -- numerics
-! Time_Scheme
-! HIGH_ORDER
-! CONSTR
-! CFL
-! FroudeCap
-! DISP_TIME_LEFT
-        ! -- wet-dry
-! MinDepth,MinDepthfrc
 
-        ! -- depth
-! DEPTH
-! DEPTHx
-! DEPTHy
-        ! variables
-! U
-! V
-! if (.NOT.DISP_TIME_LEFT)THEN
-! U0
-! V0
-! endif
-! Ubar
-! Vbar
-! ETA 
-! H
-! MASK
-! MASK9
-! MAST_STRUC
-!
-       ! -- wavemaker
-! if (WAVEMAKER is WK_IRR)
-! turns out the data for Cm Sm too large, calculate it when hotstart
-!
-! if (WAVEMAKER is WK_REG)
-! D_gen
-! Beta_gen
-! rlamda
-! 
-!
-!-------------------------------------------------------------------------------------
-     USE GLOBAL
-# if defined (VESSEL)
-     USE VESSEL_MODULE
+!===========================================================================
+!===========================================================================
+
+! --- For AMR modeling !ykchoi
+SUBROUTINE INITIAL_GRID(ng)
+     USE GLOBAL  
+     USE LOCAL   
+     IMPLICIT NONE
+     INTEGER, INTENT(IN) :: ng
+     INTEGER :: mbox1,nbox1,isk,mbox0,nbox0,m_move,n_move
+
+     REAL(SP) :: Dphi_r,Dtheta_r  !ykchoi
+
+# if defined (PARALLEL)
+     INTEGER :: parent_area_i, parent_area_j
+     INTEGER :: area_i, area_j
+     INTEGER :: II,JJ
 # endif
+     
+! for ng=1
+     IF(ng==1)THEN
+# if defined(CARTESIAN)
+	 DX_Tile(ng) = DX
+	 DY_Tile(ng) = DY
+# else
+       DX_Tile(1:Mloc,1:Nloc,ng) = DX(1:Mloc,1:Nloc)
+       DY_Tile(1:Mloc,1:Nloc,ng) = DY(1:Mloc,1:Nloc)
+# endif
+       Depth_Tile(1:Mloc,1:Nloc,ng) = Depth(1:Mloc,1:Nloc)
+       DepthX_Tile(1:Mloc1,1:Nloc,ng) = DepthX(1:Mloc1,1:Nloc)
+       DepthY_Tile(1:Mloc,1:Nloc1,ng) = DepthY(1:Mloc,1:Nloc1)
+
+       MASK_Tile(1:Mloc,1:Nloc,ng) = MASK(1:Mloc,1:Nloc)
+       MASK9_Tile(1:Mloc,1:Nloc,ng) = MASK9(1:Mloc,1:Nloc)
+       U_Tile(1:Mloc,1:Nloc,ng) = U(1:Mloc,1:Nloc)
+       V_Tile(1:Mloc,1:Nloc,ng) = V(1:Mloc,1:Nloc)
+       Ubar_Tile(1:Mloc,1:Nloc,ng) = Ubar(1:Mloc,1:Nloc)
+       Vbar_Tile(1:Mloc,1:Nloc,ng) = Vbar(1:Mloc,1:Nloc)
+       Eta_Tile(1:Mloc,1:Nloc,ng) = Eta(1:Mloc,1:Nloc)
+# if defined(CARTESIAN)
+!      We don't need latitude
+# else
+       Lat_Theta_Tile(1:Mloc,1:Nloc,ng) = Lat_Theta(1:Mloc,1:Nloc)
+# endif
+
+     ELSE
+
+! for others
+! mbox is box in a coarser grid, include ghostcells, m represents m+nghost
+
+       !========================
+	 ! case : ng >= 2
+	 !========================
+
+       isk=RATIO_SPACING(ng)
+	 
+       mbox1=MboxRef(ng)
+       nbox1=NboxRef(ng)
+
+# if defined (PARALLEL)
+	 EastParentID(:,:,ng)=-99;   WestParentID(:,:,ng)=-99;
+	 SouthParentID(:,:,ng)=-99;  NorthParentID(:,:,ng)=-99;
+
+	 parent_area_i = GridDimX( ng-1 )/px;
+	 parent_area_j = GridDimY( ng-1 )/py;
+
+	 if( n_west .eq. MPI_PROC_NULL ) THEN
+	   DO J=1,Nloc
+	      DO I=1,Nghost
+               II = mbox1 + ( I-1+(Mloc-2*Nghost)*npx )/isk !actually npx=0 at west
+               JJ = nbox1 + ( J-1+(Nloc-2*Nghost)*npy )/isk
+			 !--- ykchoi(22/June/2017)
+			 !These routines (II,JJ) are also used in subourtine INTERP_BC (bc_nesting.F).
+		     !Thus, in ProcessorID, i,j are computed by using these II, JJ.
+	         !Please see subourtine INTERP_BC before modifying these routines.
+
+			 CALL FIND_PROCESSOR( parent_area_i, PX, II, &
+	                              parent_area_j, PY, JJ, area_i, area_j )
+	         
+			 WestParentID(I,J,ng) = ProcessorID(area_i,area_j)
+	      ENDDO
+	   ENDDO
+	 endif
+
+	 if( n_east .eq. MPI_PROC_NULL ) THEN
+	   DO J=1,Nloc
+   	      DO I=Mloc-Nghost+1,Mloc
+		     II = mbox1 + ( I-1+(Mloc-2*Nghost)*npx )/isk
+               JJ = nbox1 + ( J-1+(Nloc-2*Nghost)*npy )/isk
+
+			 CALL FIND_PROCESSOR( parent_area_i, PX, II, &
+	                              parent_area_j, PY, JJ, area_i, area_j )
+
+			 EastParentID(I+Nghost-Mloc,J,ng) = ProcessorID(area_i,area_j)  !be careful
+	      ENDDO
+	   ENDDO
+	 endif
+
+	 if( n_suth .eq. MPI_PROC_NULL ) then
+	   DO I=1,Mloc
+	      DO J=1,Nghost
+               II = mbox1 + ( I-1+(Mloc-2*Nghost)*npx )/isk
+               JJ = nbox1 + ( J-1+(Nloc-2*Nghost)*npy )/isk !actually npy=0 at south
+
+			 CALL FIND_PROCESSOR( parent_area_i, PX, II, &
+	                              parent_area_j, PY, JJ, area_i, area_j )
+	         
+			 SouthParentID(I,J,ng) = ProcessorID(area_i,area_j)
+	      ENDDO
+	   ENDDO
+	 endif
+
+	 if( n_nrth .eq. MPI_PROC_NULL ) then
+	   DO I=1,Mloc
+	      DO J=Nloc-Nghost+1,Nloc
+		     II = mbox1 + ( I-1+(Mloc-2*Nghost)*npx )/isk
+               JJ = nbox1 + ( J-1+(Nloc-2*Nghost)*npy )/isk
+
+			 CALL FIND_PROCESSOR( parent_area_i, PX, II, &
+	                              parent_area_j, PY, JJ, area_i, area_j )
+
+	         NorthParentID(I,J+Nghost-Nloc,ng) = ProcessorID(area_i,area_j)  !be careful
+	      ENDDO
+	   ENDDO
+	 endif
+
+# endif
+
+! static
+       !Careful when "Mloc" on grid1 < "Mloc" on grid2
+	 ! --> Dx_Tile in some index = 0
+       !DX_Tile(1:Mloc,1:Nloc,ng)=DX_Tile(1:Mloc,1:Nloc,ng-1)/isk
+       !DY_Tile(1:Mloc,1:Nloc,ng)=DY_Tile(1:Mloc,1:Nloc,ng-1)/isk
+
+# if defined (CARTESIAN)
+       DX_Tile(ng) = DX_Tile(ng-1)/RATIO_SPACING(ng)
+	 DY_Tile(ng) = DY_Tile(ng-1)/RATIO_SPACING(ng)
+# else
+       Dphi_r=Dphi*pi/180.0_SP
+       Dtheta_r=Dtheta*pi/180.0_SP
+
+       Do J=1,Nloc
+       Do I=1,Mloc
+# if defined (PARALLEL)
+          Lat_theta(I,J)=Lat_South*pi/180.0_SP-Nghost*Dtheta_r &
+                         +(npy*Nglob/py+J-1)*Dtheta_r
+# else
+          Lat_theta(I,J)=Lat_South*pi/180.0_SP-Nghost*Dtheta_r &
+                        +(J-1)*Dtheta_r
+# endif
+          !DX_Tile(I,J,ng) = R_earth*Dphi_r*COS(Lat_theta(I,J))/isk
+          !DY_Tile(I,J,ng) = R_earth*Dtheta_r/isk
+	    DX_Tile(I,J,ng) = R_earth*Dphi_r*COS(Lat_theta(I,J))/TOTALRATIO_SPACING(ng)
+	    DY_Tile(I,J,ng) = R_earth*Dtheta_r/TOTALRATIO_SPACING(ng)
+       ENDDO
+       ENDDO
+# endif
+
+! depth
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  Depth_Tile(:,:,ng-1),Depth_Tile(1:Mloc,1:Nloc,ng),ng)
+
+       CALL LINEAR_INTERP(MaxDimX1,MaxDimY,Mloc1,Nloc,mbox1,nbox1,isk, &
+                  DepthX_Tile(:,:,ng-1),DepthX_Tile(1:Mloc1,1:Nloc,ng),ng)
+
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY1,Mloc,Nloc1,mbox1,nbox1,isk, &
+                  DepthY_Tile(:,:,ng-1),DepthY_Tile(1:Mloc,1:Nloc1,ng),ng)
+
+! Eta
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  Eta_Tile(:,:,ng-1),Eta_Tile(1:Mloc,1:Nloc,ng),ng)
+
+! calculate MASK and MASK9 separately 
+       DO J=1,Nloc
+       DO I=1,Mloc
+        IF( Eta_Tile(I,J,ng) < -DEPTH_Tile(I,J,ng) ) THEN
+         MASK_Tile(I,J,ng)=0
+         Eta_Tile(I,J,ng)=MinDepth-Depth_Tile(I,J,ng)
+        ELSE
+         MASK_Tile(I,J,ng)=1
+        ENDIF
+       ENDDO
+       ENDDO
+
+     DO J=Jbeg-1,Jend+1
+     DO I=Ibeg-1,Iend+1
+      MASK9_Tile(I,J,ng)=MASK_Tile(I,J,ng)*MASK_Tile(I-1,J,ng)*MASK_Tile(I+1,J,ng)  &
+                *MASK_Tile(I+1,J+1,ng)*MASK_Tile(I,J+1,ng)*MASK_Tile(I-1,J+1,ng) &
+                *MASK_Tile(I+1,J-1,ng)*MASK_Tile(I,J-1,ng)*MASK_Tile(I-1,J-1,ng) 
+      IF(ABS(Eta_Tile(I,J,ng))/MAX(DEPTH_Tile(I,J,ng),MinDepthFrc)>SWE_ETA_DEP)THEN
+       MASK9_Tile(I,J,ng)=ZERO
+      ENDIF
+
+     ENDDO
+     ENDDO
+
+! U
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  U_Tile(:,:,ng-1),U_Tile(1:Mloc,1:Nloc,ng),ng)
+
+! V
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  V_Tile(:,:,ng-1),V_Tile(1:Mloc,1:Nloc,ng),ng)
+
+! Ubar
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  Ubar_Tile(:,:,ng-1),Ubar_Tile(1:Mloc,1:Nloc,ng),ng)
+
+! Vbar
+       CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  Vbar_Tile(:,:,ng-1),Vbar_Tile(1:Mloc,1:Nloc,ng),ng)
+
+! Lat_theta
+# if defined (CARTESIAN)
+       
+# else
+	 CALL LINEAR_INTERP(MaxDimX,MaxDimY,Mloc,Nloc,mbox1,nbox1,isk, &
+                  Lat_Theta_Tile(:,:,ng-1),Lat_Theta_Tile(1:Mloc,1:Nloc,ng),ng)
+# endif
+! exchange for parallel !!!
+
+     ENDIF  ! end ng
+
+END SUBROUTINE INITIAL_GRID
+
+!===========================================================================
+!===========================================================================
+
+# if defined (PARALLEL)
+SUBROUTINE FIND_PROCESSOR( parent_area_i, PX, II, &
+	                      parent_area_j, PY, JJ, area_i, area_j )
+      IMPLICIT NONE
+      INTEGER,INTENT(IN) :: parent_area_i, PX, II, parent_area_j, PY, JJ
+      INTEGER,INTENT(OUT) :: area_i, area_j     
+      INTEGER :: K
+
+	DO K=1,PX
+	   IF( parent_area_i*(K-1) < II .and. II <= parent_area_i*K ) THEN
+	       area_i = K
+	   ENDIF
+	ENDDO
+	DO K=1,PY
+	   IF( parent_area_j*(K-1) < JJ .and. JJ <= parent_area_j*K ) THEN
+	       area_j = K
+	   ENDIF
+	ENDDO	         
+ENDSUBROUTINE FIND_PROCESSOR
+# endif
+
+!===========================================================================
+!===========================================================================
+
+! --- For AMR modeling !ykchoi
+SUBROUTINE LINEAR_INTERP(MaxM,MaxN,M,N,mb,nb,isk,Fin,Fout,ng)
+      USE PARAM
+!ykchoi
+# if defined (PARALLEL)
+	USE GLOBAL, ONLY : GridDimX,GridDimY,Nghost,px,py,npx,npy
+# endif
+
+      IMPLICIT NONE
+      INTEGER,INTENT(IN) :: M,N,mb,nb,isk,MaxM,MaxN,ng   !ykchoi
+      INTEGER :: II,JJ
+      REAL(SP) :: rII,rJJ      
+      REAL(SP),DIMENSION(MaxM,MaxN),INTENT(IN) :: Fin
+      REAL(SP),DIMENSION(M,N),INTENT(OUT) :: Fout
+
+!ykchoi
+# if defined (PARALLEL)
+      REAL(SP),DIMENSION(:,:),ALLOCATABLE :: VarGrid1  ! global including ghost
+      INTEGER :: mm1, nn1, Mloc_grid1, Nloc_grid1
+# endif
+
+!ykchoi
+# if defined (PARALLEL)
+      mm1 = GridDimX(ng-1) + 2*Nghost
+      nn1 = GridDimY(ng-1) + 2*Nghost
+      ALLOCATE( VarGrid1(mm1,nn1) )
+
+      Mloc_grid1 = GridDimX(ng-1)/px + 2*Nghost
+      Nloc_grid1 = GridDimY(ng-1)/py + 2*Nghost 
+      CALL GATHER_GRID( VarGrid1, Fin(1:Mloc_grid1,1:Nloc_grid1), &
+               Mloc_grid1, Nloc_grid1, mm1, nn1, Nghost)
+# endif
+
+
+# if defined (PARALLEL)
+       DO J=1,N
+        DO I=1,M
+         II = mb + (I-1+(M-2*Nghost)*npx)/isk
+         JJ = nb + (J-1+(N-2*Nghost)*npy)/isk
+         rII = REAL(mb) + REAL(I-1+(M-2*Nghost)*npx)/REAL(isk) - REAL(II)
+         rJJ = REAL(nb) + REAL(J-1+(N-2*Nghost)*npy)/REAL(isk) - REAL(JJ)
+         Fout(I,J)  &
+	     = ( (1.0_SP-rII)*VarGrid1(II,JJ) + rII*VarGrid1(II+1,JJ) )*( 1.0_SP-rJJ ) + &
+             ( (1.0_SP-rII)*VarGrid1(II,JJ+1) + rII*VarGrid1(II+1,JJ+1) )*rJJ
+        ENDDO
+       ENDDO
+	 DEALLOCATE( VarGrid1 )
+# else
+! not parallel
+
+       DO J=1,N
+       DO I=1,M
+        II=mb+(I-1)/isk
+        JJ=nb+(J-1)/isk
+        rII=REAL(mb)+REAL(I-1)/REAL(isk)-REAL(II)
+        rJJ=REAL(nb)+REAL(J-1)/REAL(isk)-REAL(JJ)
+        Fout(I,J)=((1.0_SP-rII)*Fin(II,JJ)+rII*Fin(II+1,JJ))*(1.0_SP-rJJ)+ &
+                        ((1.0_SP-rII)*Fin(II,JJ+1)+rII*Fin(II+1,JJ+1))*rJJ
+       ENDDO
+       ENDDO
+# endif
+
+END SUBROUTINE LINEAR_INTERP
+
+!===========================================================================
+!===========================================================================
+
+! --- For AMR modeling !ykchoi
+
+SUBROUTINE LOAD_DATA(ng)
+
+     USE GLOBAL  
+     USE LOCAL
 
      IMPLICIT NONE
+     INTEGER, INTENT(IN) :: ng
+
+# if defined(CARTESIAN)
+      ! No variables "Lat_Theta"
+# else
+     Lat_Theta(1:Mloc,1:Nloc) = Lat_Theta_Tile(1:Mloc,1:Nloc,ng)
+# endif
+
+     Eta(1:Mloc,1:Nloc) = Eta_Tile(1:Mloc,1:Nloc,ng)
+     Ubar(1:Mloc,1:Nloc) = Ubar_Tile(1:Mloc,1:Nloc,ng)
+     Vbar(1:Mloc,1:Nloc) = Vbar_Tile(1:Mloc,1:Nloc,ng)  
+
+     U(1:Mloc,1:Nloc) = U_Tile(1:Mloc,1:Nloc,ng)
+     V(1:Mloc,1:Nloc) = V_Tile(1:Mloc,1:Nloc,ng)
+     MASK(1:Mloc,1:Nloc) = MASK_Tile(1:Mloc,1:Nloc,ng)
+     MASK9(1:Mloc,1:Nloc) = MASK9_Tile(1:Mloc,1:Nloc,ng)
+     Depth(1:Mloc,1:Nloc) = Depth_Tile(1:Mloc,1:Nloc,ng)
+     DepthX(1:Mloc1,1:Nloc) = DepthX_Tile(1:Mloc1,1:Nloc,ng)
+     DepthY(1:Mloc,1:Nloc1) = DepthY_Tile(1:Mloc,1:Nloc1,ng)
+
+# if defined(CARTESIAN)
+     DX = DX_Tile(ng)
+     DY = DY_Tile(ng)
+# else
+     DX(1:Mloc,1:Nloc) = DX_Tile(1:Mloc,1:Nloc,ng)
+     DY(1:Mloc,1:Nloc) = DY_Tile(1:Mloc,1:Nloc,ng)
+# endif
+
+END SUBROUTINE LOAD_DATA
+
+!===========================================================================
+!===========================================================================
+
+! --- For AMR modeling !ykchoi
+SUBROUTINE CALC_GRID(ng,NestStep,NestTotal)
+
+     USE GLOBAL  
+     USE LOCAL   
+     IMPLICIT NONE
+     INTEGER, INTENT(IN) :: ng,NestStep,NestTotal
 
      INTEGER::ISTAGE
-!     REAL(SP) :: tbegin,tend  ! moved to mod_global 07/29/2016
 
-# if defined (PARALLEL)
-     CALL MPI_INIT ( ier )
-# endif
+! Consider later (ykchoi)
+! # if defined (SAMPLES)
+!     IF(WaveMaker(1:7)=='LEF_SOL')THEN
+!        CALL SOLITARY_WAVE_LEFT_BOUNDARY
+!     ENDIF  
+! # endif 
 
-     CALL READ_INPUT
-
-	![ykchoi(14.12.24.)
-	IF(INI_UVZ)THEN
-        TIME=HotStartTime
-      ENDIF
-	!ykchoi(14.12.24.)]
-
-     CALL INDEX
-
-! allocate variables
-     CALL ALLOCATE_VARIABLES
-
-     CALL INITIALIZATION
-      
-
-# if defined (COUPLING)
-     TIME=TIME_COUPLING_1
-# endif
-
-# if defined (VESSEL)
-     CALL VESSEL_INITIAL
-# endif
-
-! time integration
-
-     ! record wall time
-# if defined (PARALLEL)
-     if(myid == 0) tbegin = MPI_Wtime( )
-# else
-     CALL CPU_TIME(tbegin)
-# endif
-
-
-   DO WHILE (TIME<TOTAL_TIME)
-
-
-# if defined (SAMPLES)
-     IF(WaveMaker(1:7)=='LEF_SOL')THEN
-       CALL SOLITARY_WAVE_LEFT_BOUNDARY
-     ENDIF  
-# endif 
-
-! update three variables
+   ! update three variables
      Eta0=Eta
      Ubar0=Ubar
-     Vbar0=Vbar  
-   
+     Vbar0=Vbar
+
      CALL UPDATE_MASK
 
-     CALL EXCHANGE
+     CALL EXCHANGE(ng)    !AMR routine
+     IF(ng.GT.1)THEN
+       CALL USE_NESTING_BC(NestStep,NestTotal,ng)
+     ENDIF
 
 # if defined (COUPLING)
-         CALL OneWayCoupling
+     CALL OneWayCoupling
 # endif
 
- 
-     CALL ESTIMATE_DT(Mloc,Nloc,DX,DY,U,V,H,MinDepthFrc,DT,CFL,TIME)
-  
-! U0, V0 are moved to following part due to computation of Ut, Vt.
-	U0=U   !ykchoi(15. 08. 06.)
-	V0=V   !ykchoi
+! calculate other variables for fluxes
+     H=Eta*Gamma3+Depth
+     HU=H*U*MASK
+     HV=H*V*MASK
 
-# if defined (VESSEL)
-       CALL VESSEL_FORCING
+     IF(ng.EQ.1)THEN
+# if defined(CARTESIAN)
+       CALL ESTIMATE_DT(Mloc,Nloc,DX,DY,  &
+	      U(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),H(1:Mloc,1:Nloc),MinDepthFrc,DT,CFL,TIME)
+# else
+       CALL ESTIMATE_DT(Mloc,Nloc,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),  &
+	      U(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),H(1:Mloc,1:Nloc),MinDepthFrc,DT,CFL,TIME)
 # endif
+     ENDIF
 
-     ! 3-ORDER RUNGE-KUTTA TIME STEPPING
+     U0=U
+     V0=V
+
+! # if defined (VESSEL)
+!       CALL VESSEL_FORCING    !consider later
+! # endif
+
+! 3-ORDER RUNGE-KUTTA TIME STEPPING
      DO ISTAGE=1,3
 
-       IF(DISPERSION)THEN
-         CALL Cal_Dispersion
-       ENDIF 
-
-       CALL FLUXES
-
-# if defined (WIND)
-        IF(WindForce)THEN
-          CALL WIND_EFFECT
+        IF(DISPERSION)THEN
+          CALL Cal_Dispersion(ng)    !AMR routine
         ENDIF
-# endif
+	  
+	  CALL FLUXES(ng)
+	  
+! # if defined (WIND)
+!        IF(WindForce)THEN
+!          CALL WIND_EFFECT    !consider later
+!        ENDIF
+! # endif
 
-       CALL SourceTerms   ! put sourceterms after fluxes in order to get eta_t
+	  CALL SourceTerms(ng)   ! put sourceterms after fluxes in order to get eta_t 
 
-       CALL ESTIMATE_HUV(ISTAGE)     
+	  CALL ESTIMATE_HUV(ISTAGE, ng)    !AMR routine
 
+        CALL WAVE_BREAKING
 
-       CALL WAVE_BREAKING
-       
-       CALL EXCHANGE
-       
+        CALL EXCHANGE(ng)    !AMR routine
+
 # if defined (COUPLING)
-       CALL OneWayCoupling
+        CALL OneWayCoupling
 # endif
-         
 
-       IF(WaveMaker(1:3)=='ABS') THEN
-         CALL ABSORBING_GENERATING_BC
-       ENDIF
+        IF(ng.GT.1)THEN
+          CALL USE_NESTING_BC(NestStep,NestTotal,ng)
+        ENDIF
 
-       IF(DIRECT_SPONGE)THEN
-           CALL SPONGE_DAMPING
-       ENDIF
+        IF(ng.Eq.1)THEN
+          IF(WaveMaker(1:3)=='ABS') THEN
+            CALL ABSORBING_GENERATING_BC
+          ENDIF
+
+          IF(DIRECT_SPONGE)THEN
+            CALL SPONGE_DAMPING
+          ENDIF
+        ENDIF
 
      ENDDO
 
-     CALL MIXING_STUFF
+!==========================
+! save for next time step
+!==========================
+     MASK_TILE(1:Mloc,1:Nloc,ng) = MASK(1:Mloc,1:Nloc)
+     MASK9_TILE(1:Mloc,1:Nloc,ng) = MASK9(1:Mloc,1:Nloc)
 
-!  find maximum eta velocity 
+     U_TILE(1:Mloc,1:Nloc,ng) = U(1:Mloc,1:Nloc)
+     V_TILE(1:Mloc,1:Nloc,ng) = V(1:Mloc,1:Nloc)
+     Ubar_TILE(1:Mloc,1:Nloc,ng) = Ubar(1:Mloc,1:Nloc)
+     Vbar_TILE(1:Mloc,1:Nloc,ng) = Vbar(1:Mloc,1:Nloc)
+       
+     Eta_TILE(1:Mloc,1:Nloc,ng) = Eta(1:Mloc,1:Nloc)
 
-      IF (OUT_Hmax.OR.OUT_Hmin.OR.OUT_Umax.OR.OUT_MFmax.OR.OUT_VORmax)THEN
-        CALL MAX_MIN_PROPERTY
-      ENDIF
-         
-      CALL OUTPUT
+!     CALL MIXING_STUFF    !consider later
 
-      CALL CHECK_BLOWUP
-  
-   END DO
+!  find maximum eta velocity
+	IF(ng.eq.1)THEN 
+       
+	 IF (OUT_Hmax.OR.OUT_Hmin.OR.OUT_Umax.OR.OUT_MFmax.OR.OUT_VORmax)THEN
+         CALL MAX_MIN_PROPERTY
+       ENDIF
 
-# if defined (COUPLING)
-     CLOSE(11)
-# endif
+	 CALL OUTPUT   !STATISTICS, STATIONS
+       
+	 CALL CHECK_BLOWUP
 
-# if defined (VESSEL)
+	ENDIF
 
-DO Kves = 201,200+NumVessel
-    CLOSE(Kves)
-ENDDO
-# endif
+END SUBROUTINE CALC_GRID
 
-     ! record wall time at the end
-# if defined (PARALLEL)
-     if(myid.eq.0) tend = MPI_Wtime( )
-# else
-     CALL CPU_TIME (tend)
-# endif
+!===========================================================================
+!===========================================================================
 
-# if defined (PARALLEL)
-     if(myid.eq.0) write(*,*) 'Simulation takes',tend-tbegin,'seconds'
-     if(myid.eq.0) write(3,*) 'Simulation takes',tend-tbegin,'seconds'
-     if (myid.eq.0) WRITE(*,*)'Normal Termination!'
-     if (myid.eq.0) WRITE(3,*)'Normal Termination!'
-# else
-     write(*,*) 'Simulation takes',tend-tbegin,'seconds'
-     write(3,*) 'Simulation takes',tend-tbegin,'seconds'
-     WRITE(*,*)'Normal Termination!'
-     WRITE(3,*)'Normal Termination!'
-# endif
+SUBROUTINE INITIALIZE_VARIABLES
 
-# if defined (PARALLEL)
-     call MPI_FINALIZE ( ier )
-# endif
+     USE GLOBAL
+     IMPLICIT NONE
 
-END PROGRAM FUNWAVE_TVD
+     U_NESTING_EAST_PAR = U_NESTING_EAST
+     V_NESTING_EAST_PAR = V_NESTING_EAST
+     Z_NESTING_EAST_PAR = Z_NESTING_EAST
 
+     U_NESTING_WEST_PAR = U_NESTING_WEST
+     V_NESTING_WEST_PAR = V_NESTING_WEST
+     Z_NESTING_WEST_PAR = Z_NESTING_WEST
 
-!-------------------------------------------------------------------------------------
-! This part is not subroutines
-!  DEFINITIONS OF VARIABLES
-! 
-!    Last Update: 02/18/2016 Fengyan Shi
-!-------------------------------------------------------------------------------------
-!
-! Depth(): still water depth at element point
-! DepthNode(): still water depth at node
-! DepthX(): still water depth at x-interface
-! DepthY(): still water depth at y-interface
-! Eta():   surface elevation
-! Eta0(): Eta at previous time level
-!  for dry point, Eta() = MinDepth+Z()
-! MASK(): 1 - wet
-!         0 - dry
-! MASK_STRUC(): 0 - permanent dry point
-! MASK9: mask for itself and 8 elements around
-! 
-! U():  depth-averaged u or u at the reference level (u_alpha) at element
-! V():  depth-averaged v or v at the reference level (v_alpha) at element
-! HU(): (dep+eta)*u at element
-! HV(): (dep+eta)*v at element
-! P(): HU + dispersion at x-interface
-! Q(): HV + dispersion at y-interface
-! Fx(): F at x-interface
-! Fy(): F at y-interface
-! Gx(): G at x-interface
-! Gy(): G at y-interface
-! Ubar(:,:,:): Ubar
-! Vbar(:,:,:): Vbar
+     U_NESTING_SOUTH_PAR = U_NESTING_SOUTH
+     V_NESTING_SOUTH_PAR = V_NESTING_SOUTH
+     Z_NESTING_SOUTH_PAR = Z_NESTING_SOUTH
 
-! dispersion
-! U1p(:,:): x-component of V1p
-! V1p(:,:): y-component of V1p
+     U_NESTING_NORTH_PAR = U_NESTING_NORTH
+     V_NESTING_NORTH_PAR = V_NESTING_NORTH
+     Z_NESTING_NORTH_PAR = Z_NESTING_NORTH
 
-! 
-! EtaRxL(): Eta Left value at x-interface
-! EtaRxR(): Eta Right value at x-interface
-! EtaRyL(): Eta Left value at y-interface
-! EtaRyR(): Eta Right value at y-interface
-! HxL():   total depth  Left value at x-interface
-! HxR():   total depth  Right value at x-interface
-! HyL():   total depth  Left value at y-interface
-! HyR():   total depth  Right value at y-interface
+      !Initialize
+     Eta = ZERO
+     Ubar = ZERO
+     Vbar = ZERO
 
-! HUxL(): HU Left value at x-interface
-! HUxR(): HU Right value at x-interface
-! HUyL(): HV Left value at y-interface
-! HUyR(): HV Right value at y-interface
+     U = ZERO
+     V = ZERO
+     MASK = ZERO
+     MASK9 = ZERO
+	     
+     Depth = ZERO
+     DepthX = ZERO
+     DepthY = ZERO
+     DX = ZERO
+     DY = ZERO
 
-! PL(): HU + dispersion, Left value at x-interface
-! PR(): HU + dispersion, Right value at x-interface
-! QL(): HV + dispersion, Left value at y-interface
-! QR(): HV + dispersion, Right value at y-interface
+     U_NESTING_EAST = ZERO
+     V_NESTING_EAST = ZERO
+     Z_NESTING_EAST = ZERO
 
-! FxL = HUxL*UxL + 1/2*g*(EtaRxL^2 + 2*EtaRxL*Depthx)
-! FxR = HUxR*UxR + 1/2*g*(EtaRxR^2 + 2*EtaRxR*Depthx)
-! FyL = HyL*UyL*VyL
-! FyR = HyR*UyR*VyR
+     U_NESTING_WEST = ZERO
+     V_NESTING_WEST = ZERO
+     Z_NESTING_WEST = ZERO
 
-! GxL = HxL*UxL*VxL
-! GxR = HxR*UxR*VxR
-! GyL = HVyL*VyL + 1/2*g*(EtaRyL^2 + 2*EtaRyL*Depthy)
-! GyR = HVyR*VyR + 1/2*g*(EtaRyR^2 + 2*EtaRyR*Depthy) 
+     U_NESTING_SOUTH = ZERO
+     V_NESTING_SOUTH = ZERO
+     Z_NESTING_SOUTH = ZERO
 
+     U_NESTING_NORTH = ZERO
+     V_NESTING_NORTH = ZERO
+     Z_NESTING_NORTH = ZERO
 
+END SUBROUTINE INITIALIZE_VARIABLES
 
-
-
+!===========================================================================
+!===========================================================================

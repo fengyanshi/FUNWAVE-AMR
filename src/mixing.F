@@ -54,16 +54,19 @@ SUBROUTINE MIXING_STUFF
      USE GLOBAL
      IMPLICIT NONE
 
-! calculate mean for smagorinsky s mixing and wave height
+! calculate mean for smagorinsky's mixing and wave height
 	!ykchoi (be careful)
 	!I think Umean, Vmean is not using in other routine.
       IF( time >= STEADY_TIME )THEN    
-      CALL CALCULATE_MEAN(T_INTV_mean,T_sum,DT,Mloc,Nloc,U,V,ETA,ETA0,&
-           Umean,Vmean,ETAmean,Usum,Vsum,ETAsum,WaveHeightRMS, &
-           WaveHeightAve,Emax,Emin,Num_Zero_Up,Ibeg,Iend,Jbeg,Jend, &
-           HrmsSum,HavgSum, &
+      CALL CALCULATE_MEAN(T_INTV_mean,T_sum,DT,Mloc,Nloc, &
+	     U(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),ETA(1:Mloc,1:Nloc),ETA0(1:Mloc,1:Nloc), &
+           Umean(1:Mloc,1:Nloc),Vmean(1:Mloc,1:Nloc),ETAmean(1:Mloc,1:Nloc), &
+		 Usum(1:Mloc,1:Nloc),Vsum(1:Mloc,1:Nloc),ETAsum(1:Mloc,1:Nloc),  &
+		 WaveHeightRMS(1:Mloc,1:Nloc), WaveHeightAve(1:Mloc,1:Nloc), &
+           Emax(1:Mloc,1:Nloc),Emin(1:Mloc,1:Nloc),Num_Zero_Up,Ibeg,Iend,Jbeg,Jend, &
+           HrmsSum(1:Mloc,1:Nloc),HavgSum(1:Mloc,1:Nloc), &
 	     !ykchoi
-	     ETA2sum, ETA2mean, SigWaveHeight)
+	     ETA2sum(1:Mloc,1:Nloc), ETA2mean(1:Mloc,1:Nloc), SigWaveHeight(1:Mloc,1:Nloc))
 	ENDIF    !ykchoi
 
 END SUBROUTINE MIXING_STUFF
@@ -87,7 +90,7 @@ END SUBROUTINE MIXING_STUFF
                 HrmsSum,HavgSum, &
 	          !ykchoi
 			  ETA2sum,ETA2mean,SigWaveHeight)
-! calculate mean for smagorinsky s mixing and wave height
+! calculate mean for smagorinsky's mixing and wave height
 
       USE PARAM
       IMPLICIT NONE

@@ -51,71 +51,71 @@
 !
 !-------------------------------------------------------------------------------------
 
-SUBROUTINE INDEX
-    USE GLOBAL
-    IMPLICIT NONE
-    INTEGER :: icp
+!SUBROUTINE INDEX
+!    USE GLOBAL
+!    IMPLICIT NONE
+!    INTEGER :: icp
 
 ! TEMP
-# if defined (PARALLEL)
+! # if defined (PARALLEL)
 
-    ALLOCATE(ProcessorID(PX,PY)) 
+!    ALLOCATE(ProcessorID(PX,PY)) 
 
-    NumberProcessor = px*py
-    dims(1) = px
-    dims(2) = py
-    periods(1) = .false.
-    periods(2) = .false.
+!    NumberProcessor = px*py
+!    dims(1) = px
+!    dims(2) = py
+!    periods(1) = .false.
+!    periods(2) = .false.
 
 ! dont use periodic because our TRID solver is not based on
 !  the cyclic topology  
 !    IF(PERIODIC) periods(2) = .true.  
 
-    coords(1) = 0
-    coords(2) = 0
+!    coords(1) = 0
+!    coords(2) = 0
 
-    call MPI_CART_CREATE( MPI_COMM_WORLD, ndims, dims, &
-         periods, reorder, comm2d, ier )
-    call MPI_CART_COORDS( comm2d, myid, 2, coords, ier)
+!    call MPI_CART_CREATE( MPI_COMM_WORLD, ndims, dims, &
+!         periods, reorder, comm2d, ier )
+!    call MPI_CART_COORDS( comm2d, myid, 2, coords, ier)
 
-    npx = coords(1)
-    npy = coords(2)
+!    npx = coords(1)
+!    npy = coords(2)
 
-    call MPI_Cart_shift( comm2d, 0, 1, n_west, n_east, ier )
-    call MPI_Cart_shift( comm2d, 1, 1, n_suth, n_nrth, ier )
+!    call MPI_Cart_shift( comm2d, 0, 1, n_west, n_east, ier )
+!    call MPI_Cart_shift( comm2d, 1, 1, n_suth, n_nrth, ier )
 
-    icp=0
-    DO I=1,PX
-    DO J=1,PY
-      ProcessorID(I,J) = icp
-      icp=icp+1
-    ENDDO
-    ENDDO
+!    icp=0
+!    DO I=1,PX
+!    DO J=1,PY
+!      ProcessorID(I,J) = icp
+!      icp=icp+1
+!    ENDDO
+!    ENDDO
 
 ! check
 ! print*,myid, n_west,n_east,n_suth,n_nrth,ProcessorID(1,1),ProcessorID(1,2)
 !      print*,myid,ProcessorID(1,1),ProcessorID(2,1),ProcessorID(1,2),ProcessorID(2,2)
 !      call MPI_FINALIZE ( ier )
 
-# else
-  px=1
-  py=1
-# endif
+!# else
+!  px=1
+!  py=1
+!# endif
 
 ! now for serial code
-    Mloc=Mglob/px+2*Nghost
-    Nloc=Nglob/py+2*Nghost
-    Mloc1=Mloc+1
-    Nloc1=Nloc+1
+!    Mloc=Mglob/px+2*Nghost
+!    Nloc=Nglob/py+2*Nghost
+!    Mloc1=Mloc+1
+!    Nloc1=Nloc+1
 
-    Ibeg=Nghost+1
-    Iend=Mloc-Nghost
-    Iend1=Mloc1-Nghost
-    Jbeg=Nghost+1
-    Jend=Nloc-Nghost
-    Jend1=Nloc1-Nghost
+!    Ibeg=Nghost+1
+!    Iend=Mloc-Nghost
+!    Iend1=Mloc1-Nghost
+!    Jbeg=Nghost+1
+!    Jend=Nloc-Nghost
+!    Jend1=Nloc1-Nghost
 
-END SUBROUTINE INDEX
+!END SUBROUTINE INDEX
 
 !-------------------------------------------------------------------------------------
 !
@@ -128,9 +128,8 @@ END SUBROUTINE INDEX
 
 SUBROUTINE ESTIMATE_DT(M,N,DX,DY,U,V,H,MinDepthFrc,DT,CFL,TIME)
      USE PARAM
-     USE GLOBAL, ONLY : DT_fixed, FIXED_DT
 # if defined (PARALLEL)
-     USE GLOBAL, ONLY : ier,myid
+     USE GLOBAL, ONLY : ier
 # endif
      IMPLICIT NONE
      INTEGER,INTENT(IN)::M,N
@@ -147,7 +146,6 @@ SUBROUTINE ESTIMATE_DT(M,N,DX,DY,U,V,H,MinDepthFrc,DT,CFL,TIME)
      REAL(SP),INTENT(IN)::CFL,MinDepthFrc
      REAL(SP),INTENT(OUT)::DT
      REAL(SP),INTENT(INOUT)::TIME
-     REAL(SP) :: DT_tmp
 
      TMP3=LARGE
      DO J=1,N
@@ -191,18 +189,7 @@ SUBROUTINE ESTIMATE_DT(M,N,DX,DY,U,V,H,MinDepthFrc,DT,CFL,TIME)
           MPI_COMM_WORLD,ier)
      TMP3 = myvar
 # endif
-     DT_tmp=CFL*TMP3
-
-    IF(FIXED_DT)THEN
-
-      DT = DT_fixed
-      DO WHILE (DT > DT_tmp)
-        DT=DT/2.0_SP
-      ENDDO
-    ELSE
-     DT = DT_tmp
-    ENDIF
-
+     DT=CFL*TMP3
 ! TEMP
      TIME=TIME+DT
 
@@ -317,7 +304,7 @@ SUBROUTINE MAX_MIN_PROPERTY
 
 # if defined (PARALLEL)
       IF(OUT_VORmax) THEN
-       CALL phi_exch(VorticityMax)
+       CALL phi_exch( VorticityMax(1:Mloc,1:Nloc) )
       ENDIF
 # endif   
 
@@ -359,7 +346,7 @@ SUBROUTINE CHECK_BLOWUP
 	   endif
 # endif
 	   ICOUNT=99998;
-	   CALL PREVIEW
+	   CALL PREVIEW_AMR(1)
 
 # if defined (PARALLEL)
      call MPI_FINALIZE ( ier )
@@ -381,10 +368,11 @@ END SUBROUTINE CHECK_BLOWUP
 !
 !-------------------------------------------------------------------------------------
     SUBROUTINE wall_time_secs(tcurrent)
+    use global, only: SP
     IMPLICIT NONE
     INTEGER, dimension(8) :: walltime
-    real, INTENT(OUT) :: tcurrent
-    real :: msecs,secs,mins,hrs,days,months,mscale,years
+    real(SP), INTENT(OUT) :: tcurrent
+    real(SP) :: msecs,secs,mins,hrs,days,months,mscale,years
 
     call date_and_time(VALUES=walltime)
 

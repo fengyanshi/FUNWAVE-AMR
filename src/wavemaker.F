@@ -221,8 +221,6 @@ SUBROUTINE WAVEMAKER_INITIALIZATION
        DO I=1,NumDir
 # if defined (INTEL)
           Phase2D(J,I)=rand()*2.0_SP*pi
-# elif defined (CRAY)
-          Phase2D(J,I)=rand()*2.0_SP*pi
 # else
           Phase2D(J,I)=rand(0)*2.0_SP*pi
 # endif
@@ -238,14 +236,9 @@ SUBROUTINE WAVEMAKER_INITIALIZATION
 
       FreqPeak = 1.0_SP/PeakPeriod
 
-
-# if defined (CARTESIAN)
       CALL CALCULATE_Cm_Sm(Mloc,Nloc,DX,DY,Xc_WK,Ibeg,Jbeg,NumFreq,NumDir,&
-               D_gen2D,Phase2D,Width_WK,rlamda2D,beta_gen2D,Cm,Sm)
-# else
-      CALL CALCULATE_Cm_Sm(Mloc,Nloc,DX(1,1),DY(1,1),Xc_WK,Ibeg,Jbeg,NumFreq,NumDir,&
-               D_gen2D,Phase2D,Width_WK,rlamda2D,beta_gen2D,Cm,Sm)
-# endif
+               D_gen2D,Phase2D,Width_WK,rlamda2D,beta_gen2D, &
+			 Cm(1:Mloc,1:Nloc,1:NumFreq),Sm(1:Mloc,1:Nloc,1:NumFreq))
 
       IF(SHOW_BREAKING)THEN
        T_brk=WAVE_COMP(NumWaveComp,1) 
@@ -279,11 +272,9 @@ SUBROUTINE WAVEMAKER_INITIALIZATION
 
      ENDIF 
 
-! wei and kirby, 1999, irregular wavemaker 
-! updated with 1D TMA and Jonswap
+! wei and kirby, 1999, irregular wavemaker
       
-        IF(WaveMaker(1:6)=='WK_IRR'.OR.WaveMaker(1:6)=='TMA_1D'  &
-           .OR.WaveMaker(1:6)=='JON_1D'.OR.WaveMaker(1:6)=='JON_2D')THEN
+     IF(WaveMaker(1:6)=='WK_IRR') THEN
 
 !        move allocation here from init.F 06/07/2016
 
@@ -293,28 +284,21 @@ SUBROUTINE WAVEMAKER_INITIALIZATION
                 Cm(Mloc,Nloc,Nfreq),Sm(Mloc,Nloc,Nfreq))
 
 # if defined (CARTESIAN)
-
-    IF(EqualEnergy)THEN
       CALL WK_WAVEMAKER_IRREGULAR_WAVE & 
        (Nfreq,Ntheta,delta_WK,DEP_WK,FreqPeak,FreqMax,FreqMin,GammaTMA,Hmo,ThetaPeak, &
          sigma_theta,rlamda_ir,beta_gen_ir,D_gen_ir,Phase_ir,Width_WK,omgn_ir,&
          Periodic,DY,Nglob)
-    ELSE
-      CALL WK_EQUAL_DFREQ_IRREGULAR_WAVE &
-       (Nfreq,Ntheta,delta_WK,DEP_WK,FreqPeak,FreqMax,FreqMin,GammaTMA,Hmo,ThetaPeak, &
-         sigma_theta,rlamda_ir,beta_gen_ir,D_gen_ir,Phase_ir,Width_WK,omgn_ir,&
-         Periodic,DY,Nglob)
-    ENDIF
-
       CALL CALCULATE_Cm_Sm(Mloc,Nloc,DX,DY,Xc_WK,Ibeg,Jbeg,Nfreq,Ntheta,&
-               D_gen_ir,Phase_ir,Width_WK,rlamda_ir,beta_gen_ir,Cm,Sm)
+               D_gen_ir,Phase_ir,Width_WK,rlamda_ir,beta_gen_ir, &
+			 Cm(1:Mloc,1:Nloc,1:Nfreq),Sm(1:Mloc,1:Nloc,1:Nfreq))
 # else
       CALL WK_WAVEMAKER_IRREGULAR_WAVE & 
        (Nfreq,Ntheta,delta_WK,DEP_WK,FreqPeak,FreqMax,FreqMin,GammaTMA,Hmo,ThetaPeak, &
          sigma_theta,rlamda_ir,beta_gen_ir,D_gen_ir,Phase_ir,Width_WK,omgn_ir,&
          Periodic,DY(1,1),Nglob)
       CALL CALCULATE_Cm_Sm(Mloc,Nloc,DX(1,1),DY(1,1),Xc_WK,Ibeg,Jbeg,Nfreq,Ntheta,&
-               D_gen_ir,Phase_ir,Width_WK,rlamda_ir,beta_gen_ir,Cm,Sm)
+               D_gen_ir,Phase_ir,Width_WK,rlamda_ir,beta_gen_ir,  &
+			 Cm(1:Mloc,1:Nloc,1:Nfreq),Sm(1:Mloc,1:Nloc,1:Nfreq))
 # endif
 
        ! 06/07/2016 fyshi
@@ -325,7 +309,7 @@ SUBROUTINE WAVEMAKER_INITIALIZATION
        T_brk=1.0_SP/FreqMax
       ENDIF
 
-     ENDIF  ! end wk irregular wave (tma, 2d, 1d, jon_1d)
+     ENDIF
 !   now include spherical 
 
 
@@ -776,7 +760,6 @@ SUBROUTINE CALCULATE_TMA_Cm_Sm &
      INTEGER :: kf,kff,kb,N_spec,ktotal,k_n,ktheta,mcenter
      INTEGER :: Iter,KK,KKK
      REAL(SP) :: Celerity,Fkdif,Zlev,Fact,X_maker,Y_maker
-     
      REAL(SP) :: sumAG   !ykchoi (11/07/2016)
 
        NumFreq = mfreq
@@ -791,8 +774,6 @@ SUBROUTINE CALCULATE_TMA_Cm_Sm &
 
        DO kf=1,NumFreq
 # if defined (INTEL)
-          Phase_Ser(kf)=rand()*2.0_SP*3.1415926
-# elif defined (CRAY)
           Phase_Ser(kf)=rand()*2.0_SP*3.1415926
 # else
           Phase_Ser(kf)=rand(0)*2.0_SP*3.1415926
@@ -853,10 +834,6 @@ SUBROUTINE CALCULATE_TMA_Cm_Sm &
         enddo
 
 ! sometimes Freq(mfreq) < Freq(mfreq-1) happens, ykchoi (11/07/2016)
-! yes, there is a problem that the split using Ef/REAL(mfreq+1) sometimes cannot
-! guarantee to get the final frequency (Freq(mfreq), which results in a random number
-! fyshi (11/14/2016)
-
 	  IF ( Freq(mfreq) < Freq(mfreq-1) ) THEN
 	      Freq(mfreq) = Freq(mfreq-1)
 	  ENDIF
@@ -866,29 +843,72 @@ SUBROUTINE CALCULATE_TMA_Cm_Sm &
         N_spec=20.0_SP/sigma_theta
 
         ktotal=mtheta
-
-![-------- ykchoi (11/07/2016)
+!-------- ykchoi (11/07/2016)
 ! ------- Wrapped normal directional spreading function (Borgman, 1984)
-! --- the normal directional spreading does give a smoother distribution. 
-! --- see note of Choi 11/07/2016. should update this in the manual. fyshi(11/14/2016)
-
-        sumAG=0.0_SP
+        sumAG=0.0_SP;
         do ktheta=1,mtheta
 
            theta = -pi/3.0_SP + theta_input*pi/180.0_SP  & 
-	             + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)
+	             + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP);
 
-           AG(ktheta) = 1.0_SP/( 2.0_SP*pi )
+           AG(ktheta) = 1.0_SP/( 2.0_SP*pi );
 	     do k_n=1,N_spec
-	        AG(ktheta) = AG(ktheta) +   &
-                ( 1.0_SP/pi )*exp( -0.5_SP*( real(k_n)*sigma_theta )**2 )   &
-	           *cos( k_n*(theta - theta_input*pi/180.0_SP))
+	        AG(ktheta) = AG(ktheta) + ( 1.0_SP/pi )*exp( -0.5_SP*( real(k_n)*sigma_theta )**2 )   &
+	                                               *cos( k_n*(theta - (theta_input*pi/180.0_SP)) );
 	     enddo
-	     sumAG = sumAG + AG(ktheta)
+	     sumAG = sumAG + AG(ktheta);
 	  
 	  enddo
-	  AG(:) = AG(:)/sumAG;    !Because integral of AG should be 1.
+	  AG(:) = AG(:)/sumAG;   !Because integral of AG should be 1.
 
+!	  theta_1=-pi/3.0_SP
+!          AG(1)=(theta_1+pi)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(1)=AG(1)+1.0_SP/pi/k_n  &
+!             *exp(-(k_n*sigma_theta)**2/2.0_SP) &
+!             *(sin(k_n*theta_1))
+!          enddo
+!	
+!        do ktheta=2,(mtheta-1)/2
+!          theta_p=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-1.0_SP)
+!          theta_m=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-2.0_SP)
+!          AG(ktheta)=(theta_p-theta_m)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(ktheta)=AG(ktheta)+1./pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.)   &
+!            *(sin(k_n*theta_p)-sin(k_n*theta_m))
+!          enddo
+!        enddo
+!
+!	  theta_10=-2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)
+!	  theta_11=2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)
+!          mcenter=(mtheta-1)/2+1
+!          AG(mcenter)=(theta_11-theta_10)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(mcenter)=AG(mcenter)+1./pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.)     &
+!            *(sin(k_n*theta_11)-sin(k_n*theta_10))
+!          enddo	
+!
+!        do ktheta=mcenter+1,mtheta-1
+!          theta_p=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-0.0_SP)
+!          theta_m=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1)*(ktheta-1.0_SP)
+!          AG(ktheta)=(theta_p-theta_m)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(ktheta)=AG(ktheta)+1.0/pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.0_SP) &
+!            *(sin(k_n*theta_p)-sin(k_n*theta_m))
+!          enddo
+!        enddo
+!
+!	  theta_21=pi/3.0_SP
+!          AG(mtheta)=(pi-theta_21)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(mtheta)=AG(mtheta)+1.0_SP/pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.0_SP)  &
+!            *(sin(-k_n*theta_21))
+!          enddo
+	
 
 !  total energy is E=Hmo^2/16, the fraction should be E/Ef 
         alpha_spec=Hmo**2/16.0_SP/Ef
@@ -914,11 +934,9 @@ SUBROUTINE CALCULATE_TMA_Cm_Sm &
 
 !        ap=Hmo_each(ktheta)/2.0_SP  ! Joes suggestion
 
-!        theta=-pi/3.0_SP+theta_input*pi/180.0_SP+2.0_SP/3.0_SP*pi/ktotal*ktheta
-
         theta = -pi/3.0_SP + theta_input*pi/180.0_SP  & 
 	         + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)   !ykchoi (11/07/2016)
-
+!        theta=-pi/3.0_SP+theta_input*pi/180.0_SP+2.0_SP/3.0_SP*pi/ktotal*ktheta
         alpha=-0.39_SP
         alpha1=alpha+1.0_SP/3.0_SP
 
@@ -1032,22 +1050,17 @@ END SUBROUTINE CALCULATE_TMA_Cm_Sm
 !
 !    WK_WAVEMAKER_IRREGULAR_WAVE is subroutine 
 !      to calculate source function for Wei and Kirbys 
-!      internal wave maker, irregular wave (TMA, JONSWAP)
+!      internal wave maker, irregular wave (TMA)
 !
 !    HISTORY: 
 !      11/8/2010 Fengyan Shi
-!      10/18/2016 Fengyan Shi, Young-Kwang Choi questioned about Geimans conversion.
-!                              The derivation was checked again and found it is 
-!                              necessary to convert from Hmo to Hrms, unless the 
-!                              input wave height is Hrms. I reorganized the code.
-!      04/14/2017 Fengyan Shi, add options equal space and equal energy
+!
 !-------------------------------------------------------------------------------------
 SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE & 
                (mfreq,mtheta,delta,h_gen,fm,fmax,fmin,gamma_spec,Hmo,theta_input,&
                 sigma_theta_input,rlamda,beta_gen,D_gen,phi1,width,omgn, &
                 Periodic,DY,Nglob)
      USE PARAM
-     USE GLOBAL, only : WAVEMAKER
 #  if defined (PARALLEL)
      USE GLOBAL, only : myid, ier
 # endif
@@ -1073,108 +1086,203 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
 
      REAL(SP) :: sumAG   !ykchoi (11/07/2016)
 
+!ykchoi test------------------------------------------------
+       !if(myid.eq.0) open( 20000, file='tma_spec.out', status='unknown' )        
+!-----------------------------------------------------------
 
        EF=0.0_SP
 ! ---  get freq(100) and Hmo_each
 
-        do kf=1,10000
+       do kf=1,10000
 
-        fre=fmin+(fmax-fmin)/10000.0_SP*(kf-1.0_SP)
-        omiga_spec=2.0_SP*pi*fre*SQRT(h_gen/grav)
-        phi=1.0_SP-0.5_SP*(2.0_SP-omiga_spec)**2
-        if(omiga_spec.le.1.0_SP) phi=0.5_SP*omiga_spec**2
-        if(omiga_spec.ge.2.0_SP) phi=1.0_SP
+          fre=fmin+(fmax-fmin)/10000.0_SP*(kf-1.0_SP)
+          omiga_spec=2.0_SP*pi*fre*SQRT(h_gen/grav)
+          phi=1.0_SP-0.5_SP*(2.0_SP-omiga_spec)**2
+          if(omiga_spec.le.1.0_SP) phi=0.5_SP*omiga_spec**2
+          if(omiga_spec.ge.2.0_SP) phi=1.0_SP
 
-        IF(WaveMaker(1:3)=='JON') THEN
-          phi=1.0_SP
-        ENDIF
+          sigma_spec=0.07_SP
+          if(fre.gt.fm)sigma_spec=0.09_SP
 
-        sigma_spec=0.07_SP
-        if(fre.gt.fm)sigma_spec=0.09_SP
+          Etma=grav**2*fre**(-5)*(2.0_SP*pi)**(-4)*phi &
+            *exp(-5.0_SP/4.0_SP*(fre/fm)**(-4)) &
+            *gamma_spec**(exp(-(fre/fm-1.0_SP)**2/(2.0_SP*sigma_spec**2)))
 
-        Etma=grav**2*fre**(-5)*(2.0_SP*pi)**(-4)*phi &
-         *exp(-5.0_SP/4.0_SP*(fre/fm)**(-4)) &
-         *gamma_spec**(exp(-(fre/fm-1.0_SP)**2/(2.0_SP*sigma_spec**2)))
+          Ef=Ef+Etma*(fmax-fmin)/10000.0_SP
+          Ef10000(kf)=Etma
 
-        Ef=Ef+Etma*(fmax-fmin)/10000.0_SP
-        Ef10000(kf)=Etma
+!ykchoi test--------------------------------------------------------------------------------------
+          !if(myid.eq.0) write(20000,'(i10,1x,f10.7,1x,f15.7,1x,f15.7)') kf, fre, Ef, Etma
+!-------------------------------------------------------------------------------------------------
 
-        enddo
+       enddo
+!ykchoi test------------------------------------------------	
+	 !if(myid.eq.0) close(20000) 
+!-----------------------------------------------------------
 
 !---   get 100 frequecies
 ! -- it seems theres an inaccuracy caused by 100 freq if mfreq<100
 !    should change to mfreq 29/10/2012
  
-         Ef100=Ef/REAL(mfreq+1)
+!        Ef100=Ef/101.0_SP
+       Ef100=Ef/REAL(mfreq+1)
+!        print*, Ef100, Ef
+       kb=0
+!        do kff=1,100
 
-        kb=0
+!ykchoi test------------------------------------------------------------
+       !if(myid.eq.0) open(20000, file='frequency.out', status='unknown' )
+!-----------------------------------------------------------------------
         
-	  do kff=1,mfreq
+	 do kff=1,mfreq
 
-        Ef_add=0.0_SP
-        do k=kb+1,10000
+          Ef_add=0.0_SP
+          do k=kb+1,10000
 
-          Ef_add=Ef_add+Ef10000(k)*(fmax-fmin)/10000.0_SP
-          if(Ef_add.ge.Ef100.or.k.eq.10000) then
+             Ef_add=Ef_add+Ef10000(k)*(fmax-fmin)/10000.0_SP
+             if(Ef_add.ge.Ef100.or.k.eq.10000) then
 
-            Freq(kff)=fmin+(fmax-fmin)/10000.0_SP*(k-(k-kb)/2)
+               Freq(kff)=fmin+(fmax-fmin)/10000.0_SP*(k-(k-kb)/2)
 
-             kb=k
-            goto 100
+               kb=k
+               goto 100
 
-          endif
+             endif
 
-        enddo
-100     continue
+          enddo
+100       continue
 
 ! sometimes Freq=0 happens, 02/08/2012
-        IF(Freq(kff).eq.0.0)THEN
-           Freq(kff)=Freq(kff-1)
-        ENDIF
+          IF(Freq(kff).eq.0.0)THEN
+            Freq(kff)=Freq(kff-1)
+          ENDIF
 	  
-        enddo
+	 enddo
 
 ! sometimes Freq(mfreq) < Freq(mfreq-1) happens, ykchoi (11/07/2016)
 	  IF ( Freq(mfreq) < Freq(mfreq-1) ) THEN
 	      Freq(mfreq) = Freq(mfreq-1)
 	  ENDIF
 
+!ykchoi test-------------------------------------
+        !if(myid.eq.0) then
+	  !   do kff=1,mfreq
+	  !      write(20000,*) kff, Freq(kff)
+	  !   enddo
+        !endif
+!------------------------------------------------	  
+
+
+!ykchoi test------------------------------------------------	
+	 !if(myid.eq.0) close(20000) 
+!-----------------------------------------------------------
+
 ! --- directional wave
-        sigma_theta=sigma_theta_input*pi/180.0_SP
-        N_spec=20.0_SP/sigma_theta
+       sigma_theta=sigma_theta_input*pi/180.0_SP
+       N_spec=20.0_SP/sigma_theta
 
-        ktotal=mtheta
+       ktotal=mtheta
 
-       IF(mtheta==1) THEN ! 1D case
-         AG(1) = 1.0_SP
-       ELSE
 !-------- ykchoi (11/07/2016)
 ! ------- Wrapped normal directional spreading function (Borgman, 1984)
        sumAG=0.0_SP;
        do ktheta=1,mtheta
 
           theta = -pi/3.0_SP + theta_input*pi/180.0_SP  & 
-	           + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)
+	           + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP);
 
-          AG(ktheta) = 1.0_SP/( 2.0_SP*pi )
+          AG(ktheta) = 1.0_SP/( 2.0_SP*pi );
 	    do k_n=1,N_spec
-	       AG(ktheta) = AG(ktheta) +  & 
-                ( 1.0_SP/pi )*exp( -0.5_SP*( real(k_n)*sigma_theta )**2 )  &
-	        *cos( k_n*(theta - theta_input*pi/180.0_SP) )
+	       AG(ktheta) = AG(ktheta) + ( 1.0_SP/pi )*exp( -0.5_SP*( real(k_n)*sigma_theta )**2 )   &
+	                                              *cos( k_n*(theta - (theta_input*pi/180.0_SP)) );
 	    enddo
 	    sumAG = sumAG + AG(ktheta);
 	  
 	 enddo
 	 AG(:) = AG(:)/sumAG;   !Because integral of AG should be 1.
 
+!	 theta_1=-pi/3.0_SP
+!       AG(1)=(theta_1+pi)/(2.0_SP*pi)
+!       do k_n=1,N_spec
+!              AG(1)=AG(1)+1.0_SP/pi/k_n  &
+!                 *exp(-(k_n*sigma_theta)**2/2.0_SP) &
+!                 *(sin(k_n*theta_1))
+!       enddo
+!	
+!       do ktheta=2,(mtheta-1)/2
+!          theta_p=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-1.0_SP)
+!          theta_m=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-2.0_SP)
+!          AG(ktheta)=(theta_p-theta_m)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!             AG(ktheta)=AG(ktheta)+1./pi/k_n  &
+!                *exp(-(k_n*sigma_theta)**2/2.)   &
+!                *(sin(k_n*theta_p)-sin(k_n*theta_m))
+!          enddo
+!       enddo
+!
+!	 theta_10=-2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)
+!	 theta_11=2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)
+!       mcenter=(mtheta-1)/2+1
+!       AG(mcenter)=(theta_11-theta_10)/(2.0_SP*pi)
+!       do k_n=1,N_spec
+!          AG(mcenter)=AG(mcenter)+1./pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.)     &
+!            *(sin(k_n*theta_11)-sin(k_n*theta_10))
+!       enddo	
+!
+!       do ktheta=mcenter+1,mtheta-1
+!          theta_p=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1.0_SP)*(ktheta-0.0_SP)
+!          theta_m=theta_1+2.0_SP/3.0_SP*pi/(ktotal-1)*(ktheta-1.0_SP)
+!          AG(ktheta)=(theta_p-theta_m)/(2.0_SP*pi)
+!          do k_n=1,N_spec
+!            AG(ktheta)=AG(ktheta)+1.0/pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.0_SP) &
+!            *(sin(k_n*theta_p)-sin(k_n*theta_m))
+!          enddo
+!       enddo
+!
+!	 theta_21=pi/3.0_SP
+!       AG(mtheta)=(pi-theta_21)/(2.0_SP*pi)
+!       do k_n=1,N_spec
+!          AG(mtheta)=AG(mtheta)+1.0_SP/pi/k_n  &
+!            *exp(-(k_n*sigma_theta)**2/2.0_SP)  &
+!            *(sin(-k_n*theta_21))
+!       enddo
 
-      ENDIF ! 1D or not
+!ykchoi test------------------------------------------------
+!	 if(myid.eq.0) open( 20000, file='theta_AG.out', status='unknown' )
+!	 do ktheta=1,mtheta
+          !theta = -pi/3.0 + theta_input*pi/180.0 + 2.0/3.0*pi/ktotal*ktheta
+!	    theta = -pi/3.0_SP + theta_input*pi/180.0_SP & 
+!		       + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)   !ykchoi(11/07/16)
 
-        alpha_spec=Hmo**2/16.0_SP/Ef
+!		if(myid.eq.0) write(20000,'(i10,1x,f10.7,1x,f15.7,1x,f15.7)') & 
+!		                          ktheta, theta, theta*180/pi, AG( ktheta )
+!       enddo
+!	 if(myid.eq.0) close(20000) 
+!ykchoi test------------------------------------------------
 
-        do ktheta=1,mtheta
-        Hmo_each(ktheta)=4.0_SP*SQRT((alpha_spec*Ef100*AG(ktheta)))
-        enddo
+
+!ykchoi test-----------------------------------------------------------------
+!	  if(myid.eq.0) open( 20000, file='theta_Hmo_each.out', status='unknown' )
+!----------------------------------------------------------------------------
+	
+       alpha_spec=Hmo**2/16.0_SP/Ef
+       do ktheta=1,mtheta
+          Hmo_each(ktheta)=4.0_SP*SQRT((alpha_spec*Ef100*AG(ktheta)))
+	    
+	    !ykchoi test---------------------------------------------------
+	    !theta = -pi/3.0 + theta_input*pi/180.0 + 2.0/3.0*pi/ktotal*ktheta
+	    theta = -pi/3.0_SP + theta_input*pi/180.0_SP &
+		        + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)   !ykchoi(11/07/16)
+!	    if(myid.eq.0) write(20000,'(i10,1x,f10.7,1x,f15.7,1x,f15.7)')  &
+!		                           ktheta, theta, theta*180/pi, Hmo_each( ktheta ) 
+	    !--------------------------------------------------------------
+       enddo
+
+!ykchoi test-----------------------------------------------------------------
+!         if(myid.eq.0) close(20000)
+!----------------------------------------------------------------------------
 
 ! ---  wave generation parameter
 
@@ -1184,24 +1292,15 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
 
 ! here should convert Hmo to Hrms
 !  Hrms=1./sqrt(2)*Hmo
-! 05/12/2011 Joe has reported that the conversion should be removed
-!  fyshi converted it back, fyshi and Choi checked it.
-         ap=Hmo_each(ktheta)/SQRT(2.0_SP)/2.0_SP
-!        ap=Hmo_each(ktheta)/2.0_SP  ! this is the one suggested by Geiman
-        
-!	  theta=-pi/3.0_SP+theta_input*pi/180.0_SP+2.0_SP/3.0_SP*pi/ktotal*ktheta
+! 05/12/2011 Joe has reported that the conversion should be removed. On 10/18/2016
+!  fyshi converted it back, fyshi and Choi checked it. 
 
-!ykchoi(11/07/16)
-! yes, this statement makes a distribution symmetric, checked by fyshi(11/14/2016)
+        ap=Hmo_each(ktheta)/SQRT(2.0_SP)/2.0_SP
 
-
-      IF (mtheta == 1) THEN
-        theta = 0.0_SP
-      ELSE
+!        ap=Hmo_each(ktheta)/2.0_SP  ! Joes suggestion
+!        theta=-pi/3.0_SP+theta_input*pi/180.0_SP+2.0_SP/3.0_SP*pi/ktotal*ktheta
         theta = -pi/3.0_SP + theta_input*pi/180.0_SP &
-	         + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)   
- 
-      ENDIF
+	         + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)   !ykchoi(11/07/16)
 
         alpha=-0.39_SP
         alpha1=alpha+1.0_SP/3.0_SP
@@ -1236,14 +1335,16 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
        IF(Theta.GT.ZERO)THEN
          tmp3=ZERO
          I=0
-!  fyshi change < to <= to include theta=0, 02/26/2017
-         Do WHILE (tmp3<=Theta)
+         Do WHILE (tmp3<Theta)
            I=I+1
            tmp2=I*2.0_SP*pi/DY/(Nglob-1.0_SP) 
            IF(tmp2.GE.tmp1)THEN
             tmp3=pi/2.0_SP
            ELSE
             tmp3=ASIN(tmp2/tmp1)      ! theta, based on rlamda=wkn*sin(theta)
+           ENDIF
+           IF(I>1000)THEN
+             WRITE(*,*) 'could not find a wave angle for periodic boundary condition, STOP'
            ENDIF
          ENDDO
           IF(tmp2.LT.tmp1) tmp3=ASIN((I-1)*2.0_SP*pi/DY/(Nglob-1.0_SP)/tmp1)
@@ -1258,22 +1359,13 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
            ELSE           
              tmp3=-ASIN(tmp2/tmp1)      ! theta, based on rlamda=wkn*sin(theta)
            ENDIF
+           IF(I>1000)THEN
+             WRITE(*,*) 'could not find a wave angle for periodic boundary condition, STOP'
+           ENDIF
          ENDDO
           IF(tmp2.LT.tmp1) tmp3=-ASIN((I-1)*2.0_SP*pi/DY/(Nglob-1.0_SP)/tmp1)
        ENDIF
-
-# if defined (PARALLEL)
-           if(myid==0)then
-             WRITE(3,'(A40)') 'For periodic bc, Freq, Dir, New Dir'
-             WRITE(3,'(3F12.3)')  Freq(kf),theta*180./pi,tmp3*180./pi
-           endif
-# else
-             WRITE(3,'(A40)') 'For periodic bc, Freq, Dir, New Dir'
-             WRITE(3,'(3F12.3)')  Freq(kf),theta*180./pi,tmp3*180./pi
-# endif
-
        Theta = tmp3
-
      ENDIF
 
 ! ________________
@@ -1288,8 +1380,8 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
         *(omgn(kf)**2-alpha1*grav*wkn**4*h_gen**3)  &
              /(omgn(kf)*wkn*rI*(1.0_SP-alpha*(wkn*h_gen)**2))
 
-        enddo ! end kf
-        enddo ! end ktheta
+        enddo
+        enddo
 	  
 
 ! calculate wavemaker width
@@ -1303,8 +1395,6 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
         do ktheta=1,mtheta
         do kf=1,mfreq
 # if defined (INTEL)
-          phi1(kf,ktheta)=rand()*2.0_SP*pi
-# elif defined (CRAY)
           phi1(kf,ktheta)=rand()*2.0_SP*pi
 # else
           phi1(kf,ktheta)=rand(0)*2.0_SP*pi
@@ -1313,237 +1403,6 @@ SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE &
         enddo
 
 END SUBROUTINE WK_WAVEMAKER_IRREGULAR_WAVE
-
-
-!-------------------------------------------------------------------------------------
-!
-!    WK_SUBROUTINE WK_EQUAL_DFREQ_IRREGULAR_WAVE_IRREGULAR_WAVE is subroutine 
-!      to calculate source function for Wei and Kirbys 
-!      internal wave maker, irregular wave (TMA, JONSWAP)
-!      using equal space in frequency domain
-!
-!    HISTORY: 
-!      04/14/2017 Fengyan Shi, equal space
-!-------------------------------------------------------------------------------------
-SUBROUTINE WK_EQUAL_DFREQ_IRREGULAR_WAVE & 
-               (mfreq,mtheta,delta,h_gen,fm,fmax,fmin,gamma_spec,Hmo,theta_input,&
-                sigma_theta_input,rlamda,beta_gen,D_gen,phi1,width,omgn, &
-                Periodic,DY,Nglob)
-     USE PARAM
-     USE GLOBAL, only : WAVEMAKER
-#  if defined (PARALLEL)
-     USE GLOBAL, only : myid, ier
-# endif
-# if defined(INTEL)
-     USE IFPORT
-# endif
-     IMPLICIT NONE
-     INTEGER,INTENT(IN) :: mfreq,mtheta,Nglob
-     REAL(SP),INTENT(IN) :: delta,h_gen,fm,fmax,fmin,gamma_spec,Hmo,theta_input,&
-                            sigma_theta_input,DY
-     LOGICAL,INTENT(IN) :: Periodic
-     REAL(SP),DIMENSION(mfreq,mtheta),INTENT(OUT) :: D_gen,phi1,rlamda 
-     REAL(SP),DIMENSION(mfreq),INTENT(OUT) :: beta_gen,omgn
-     REAL(SP), INTENT(OUT) :: width
-     REAL(SP),DIMENSION(mfreq):: Freq,EnergyBin
-     REAL(SP), DIMENSION(mtheta) :: AG
-     REAL(SP), DIMENSION(mtheta,mfreq) :: Hmo_each
-     REAL(SP), DIMENSION(10000) :: Ef10000
-     REAL(SP) :: Ef,fre,omiga_spec,phi,sigma_spec,Etma,Ef100,Ef_add,sigma_theta,&
-                 theta_p,theta_m,theta_10,theta_11,theta_21,alpha_spec,ap,&
-                 theta,alpha,alpha1,tb,tc,wkn,C_phase,wave_length,rl_gen,rI,theta_1,&
-                 omgn_tmp,df
-     INTEGER :: kf,kff,kb,N_spec,ktotal,k_n,ktheta,mcenter
-
-     REAL(SP) :: sumAG   !ykchoi (11/07/2016)
-
-       df = (fmax-fmin)/(mfreq-1.0_SP)
-       Ef = ZERO
-
-       DO kff=1,mfreq
-        freq(kff) = fmin +(kff-1)*df
-        omiga_spec=2.0_SP*pi*freq(kff)*SQRT(h_gen/grav)
-        phi=1.0_SP-0.5_SP*(2.0_SP-omiga_spec)**2
-        if(omiga_spec.le.1.0_SP) phi=0.5_SP*omiga_spec**2
-        if(omiga_spec.ge.2.0_SP) phi=1.0_SP
-
-        IF(WaveMaker(1:3)=='JON') THEN
-          phi=1.0_SP
-        ENDIF
-
-        sigma_spec=0.07_SP
-        if(freq(kff).gt.fm)sigma_spec=0.09_SP
-
-
-        Etma=grav**2*freq(kff)**(-5)*(2.0_SP*pi)**(-4)*phi &
-         *exp(-5.0_SP/4.0_SP*(freq(kff)/fm)**(-4)) &
-         *gamma_spec**(exp(-(freq(kff)/fm-1.0_SP)**2/(2.0_SP*sigma_spec**2)))
-        EnergyBin(kff) = Etma*df
-        Ef = Ef + EnergyBin(kff)
-
-       ENDDO  ! end kff
-
-! --- directional wave
-        sigma_theta=sigma_theta_input*pi/180.0_SP
-        N_spec=20.0_SP/sigma_theta
-
-        ktotal=mtheta
-
-       IF(mtheta==1) THEN ! 1D case
-         AG(1) = 1.0_SP
-       ELSE
-!-------- ykchoi (11/07/2016)
-! ------- Wrapped normal directional spreading function (Borgman, 1984)
-       sumAG=0.0_SP;
-       do ktheta=1,mtheta
-
-          theta = -pi/3.0_SP + theta_input*pi/180.0_SP  & 
-	           + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)
-
-          AG(ktheta) = 1.0_SP/( 2.0_SP*pi )
-	    do k_n=1,N_spec
-	       AG(ktheta) = AG(ktheta) +  & 
-                ( 1.0_SP/pi )*exp( -0.5_SP*( real(k_n)*sigma_theta )**2 )  &
-	        *cos( k_n*(theta - theta_input*pi/180.0_SP) )
-	    enddo
-	    sumAG = sumAG + AG(ktheta);
-	  
-	 enddo
-	 AG(:) = AG(:)/sumAG;   !Because integral of AG should be 1.
-
-
-      ENDIF ! 1D or not
-
-        alpha_spec=Hmo**2/16.0_SP/Ef
-
-        DO kf=1,mfreq
-        DO ktheta=1,mtheta
-         Hmo_each(ktheta,kf)=4.0_SP*SQRT((alpha_spec*EnergyBin(kf)*AG(ktheta)))
-        ENDDO
-        ENDDO
-
-! ---  wave generation parameter
-
-        do kf=1,mfreq
-
-        do ktheta=1,mtheta
-
-         ap=Hmo_each(ktheta,kf)/SQRT(2.0_SP)/2.0_SP
-        
-      IF (mtheta == 1) THEN
-        theta = 0.0_SP
-      ELSE
-        theta = -pi/3.0_SP + theta_input*pi/180.0_SP &
-	         + 2.0_SP/3.0_SP*pi/(real(ktotal)-1.0_SP)*(real(ktheta)-1.0_SP)    
-      ENDIF
-
-        alpha=-0.39_SP
-        alpha1=alpha+1.0_SP/3.0_SP
-        omgn(kf)=2.0_SP*pi*Freq(kf)
-
-        tb=omgn(kf)*omgn(kf)*h_gen/grav
-        tc=1.0_SP+tb*alpha
-        wkn=SQRT((tc-SQRT(tc*tc-4.0_SP*alpha1*tb))/(2.0_SP*alpha1))/h_gen
-
-! here I use fixed C_phase and wave_length to determine beta_gen 
-! as suggested by Wei and Kirby 1999
-
-! in case wkn=0 02/08/2012  
-        IF(wkn.eq.0.0)THEN
-           wkn=SMALL
-           C_phase=sqrt(grav*h_gen)
-           wave_length=C_phase/fm
-        ELSE
-          C_phase=1.0_SP/wkn*fm*2.0_SP*pi
-          wave_length=C_phase/fm
-        ENDIF
-!                          
-
-! for periodic boundary conditions  
-! ________________
- 
-     IF(PERIODIC)THEN
-       tmp1=wkn
-       IF(Theta.GT.ZERO)THEN
-         tmp3=ZERO
-         I=0
-!  fyshi change < to <= to include theta=0, 02/26/2017
-         Do WHILE (tmp3<=Theta)
-           I=I+1
-           tmp2=I*2.0_SP*pi/DY/(Nglob-1.0_SP) 
-           IF(tmp2.GE.tmp1)THEN
-            tmp3=pi/2.0_SP
-           ELSE
-            tmp3=ASIN(tmp2/tmp1)      ! theta, based on rlamda=wkn*sin(theta)
-           ENDIF
-         ENDDO
-          IF(tmp2.LT.tmp1) tmp3=ASIN((I-1)*2.0_SP*pi/DY/(Nglob-1.0_SP)/tmp1)
-       ELSEIF(Theta.LT.ZERO)THEN
-         tmp3=ZERO
-         I=0
-         Do WHILE (tmp3>Theta)
-           I=I+1
-           tmp2=I*2.0_SP*pi/DY/(Nglob-1.0_SP)     ! rlamda
-           IF(tmp2.GE.tmp1)THEN
-            tmp3=-pi/2.0_SP
-           ELSE           
-             tmp3=-ASIN(tmp2/tmp1)      ! theta, based on rlamda=wkn*sin(theta)
-           ENDIF
-         ENDDO
-          IF(tmp2.LT.tmp1) tmp3=-ASIN((I-1)*2.0_SP*pi/DY/(Nglob-1.0_SP)/tmp1)
-       ENDIF
-
-# if defined (PARALLEL)
-           if(myid==0)then
-             WRITE(3,'(A40)') 'For periodic bc, Freq, Dir, New Dir'
-             WRITE(3,'(3F12.3)')  Freq(kf),theta*180./pi,tmp3*180./pi
-           endif
-# else
-             WRITE(3,'(A40)') 'For periodic bc, Freq, Dir, New Dir'
-             WRITE(3,'(3F12.3)')  Freq(kf),theta*180./pi,tmp3*180./pi
-# endif
-
-       Theta = tmp3
-
-     ENDIF
-
-! ________________
-
-        rlamda(kf,ktheta)=wkn*sin(theta)
-        beta_gen(kf)=80.0_SP/delta**2/wave_length**2
-
-        rl_gen=wkn*cos(theta)
-        rI=SQRT(pi/beta_gen(kf))*exp(-rl_gen**2/4.0_SP/beta_gen(kf))
-
-        D_gen(kf,ktheta)=2.0_SP*ap*cos(theta)  &
-        *(omgn(kf)**2-alpha1*grav*wkn**4*h_gen**3)  &
-             /(omgn(kf)*wkn*rI*(1.0_SP-alpha*(wkn*h_gen)**2))
-
-        enddo ! end kf
-        enddo ! end ktheta
-	  
-
-! calculate wavemaker width
-        omgn_tmp=2.0_SP*pi*fm
-        tb=omgn_tmp*omgn_tmp*h_gen/grav
-        tc=1.0_SP+tb*alpha
-        wkn=SQRT((tc-SQRT(tc*tc-4.0_SP*alpha1*tb))/(2.0_SP*alpha1))/h_gen
-        width=delta*wave_length/2.0_SP
-! ---   create phi1
-
-        do ktheta=1,mtheta
-        do kf=1,mfreq
-# if defined (INTEL)
-          phi1(kf,ktheta)=rand()*2.0_SP*pi
-# elif defined (CRAY)
-          phi1(kf,ktheta)=rand()*2.0_SP*pi
-# else
-          phi1(kf,ktheta)=rand(0)*2.0_SP*pi
-# endif
-        enddo
-        enddo
-
-END SUBROUTINE WK_EQUAL_DFREQ_IRREGULAR_WAVE
 
 !-------------------------------------------------------------------------------------
 !
@@ -1732,4 +1591,3 @@ SUBROUTINE VISCOSITY_WMAKER (M,N,ETAT,visbrk,H,MinDepthFrc,DX,DY)
      ENDDO
 
 END SUBROUTINE VISCOSITY_WMAKER
-

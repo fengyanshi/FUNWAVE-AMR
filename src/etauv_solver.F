@@ -50,11 +50,8 @@
 !      05/12/2011 Fengyan Shi
 !
 !-------------------------------------------------------------------------------------
-SUBROUTINE ESTIMATE_HUV(ISTEP)
+SUBROUTINE ESTIMATE_HUV(ISTEP,ng)
      USE GLOBAL
-# if defined (VESSEL_PANEL_SOURCE)
-     USE VESSEL_MODULE
-# endif
      IMPLICIT NONE
      INTEGER,INTENT(IN)::ISTEP
      REAL(SP),PARAMETER::n_left=-1.0_SP,n_right=1.0_SP,n_bottom=-1.0_SP,n_top=1.0_SP
@@ -66,6 +63,7 @@ SUBROUTINE ESTIMATE_HUV(ISTEP)
      REAL(SP)::DXg,DYg
 
      INTEGER::kf,kd
+     INTEGER,INTENT(IN) :: ng
 
 ! MUSCL-Hancock, Zhou et al., p. 7
 
@@ -86,8 +84,7 @@ SUBROUTINE ESTIMATE_HUV(ISTEP)
       F_bottom=Q(I,J)
       F_top=Q(I,J+1)
 ! now work for spherical # if defined (CARTESIAN)
-        IF(WaveMaker(1:6)=='WK_IRR'.OR.WaveMaker(1:6)=='TMA_1D'  &
-           .OR.WaveMaker(1:6)=='JON_1D'.OR.WaveMaker(1:6)=='JON_2D')THEN
+      IF(WAVEMAKER(1:6)=='WK_IRR')THEN
 # if defined (PARALLEL)
             xmk=(I-Ibeg)*DXg+npx*(Mloc-2*Nghost)*DXg
             ymk=(J-Jbeg)*DYg+npy*(Nloc-2*Nghost)*DYg
@@ -97,21 +94,17 @@ SUBROUTINE ESTIMATE_HUV(ISTEP)
 # endif
          IF(ABS(xmk-Xc_WK)<Width_WK.AND. &
             ABS(ymk-Yc_WK)<Ywidth_WK/2.0_SP)THEN
-
-! WaveMaker_Mass was done in sources.F 02/27/2017
-
-!          WK_Source=ZERO
-!          DO kf=1,Nfreq
-!           WK_Source=WK_Source+TANH(PI/(Time_ramp/FreqPeak)*TIME)*(Cm(I,J,kf) &
-!                       *COS(OMGN_IR(KF)*TIME) &
-!                       +Sm(I,J,kf)*SIN(OMGN_IR(KF)*TIME))
-!          ENDDO
+          WK_Source=ZERO
+          DO kf=1,Nfreq
+           WK_Source=WK_Source+TANH(PI/(Time_ramp/FreqPeak)*TIME)*(Cm(I,J,kf) &
+                       *COS(OMGN_IR(KF)*TIME) &
+                       +Sm(I,J,kf)*SIN(OMGN_IR(KF)*TIME))
+          ENDDO
 
           R1(I,J)=-1.0_SP/DXg*(F_right*n_right+F_left*n_left) &
                 -1.0_SP/DYg*(F_top*n_top+F_bottom*n_bottom) &
         ! wavemaker
-                 +WaveMaker_Mass(I,J)
-!                +WK_Source      
+                +WK_Source      
          ELSE
          R1(I,J)=-1.0_SP/DXg*(F_right*n_right+F_left*n_left) &
                    -1.0_SP/DYg*(F_top*n_top+F_bottom*n_bottom)
@@ -178,11 +171,6 @@ SUBROUTINE ESTIMATE_HUV(ISTEP)
 # if defined (CARTESIAN)
         R1(I,J)=-1.0_SP/DXg*(F_right*n_right+F_left*n_left) &
                    -1.0_SP/DYg*(F_top*n_top+F_bottom*n_bottom)
-# if defined (VESSEL_PANEL_SOURCE)
-        R1(I,J)=R1(I,J) +VesselFluxGradient(I,J)
-# endif
-  ! end vessel
-
 # else
         R1(I,J)=-1.0_SP/DX(I,J)*(F_right*n_right+F_left*n_left) &
                    -1.0_SP/DY(I,J)*(F_top*n_top+F_bottom*n_bottom)
@@ -266,7 +254,7 @@ SUBROUTINE ESTIMATE_HUV(ISTEP)
      ENDDO
      ENDDO
 
-     CALL GET_Eta_U_V_HU_HV
+     CALL GET_Eta_U_V_HU_HV(ng)
 
 END SUBROUTINE ESTIMATE_HUV
 
@@ -282,7 +270,7 @@ END SUBROUTINE ESTIMATE_HUV
 !                               added parallel code of periodic bc in y
 !
 !-------------------------------------------------------------------------------------
-SUBROUTINE GET_Eta_U_V_HU_HV
+SUBROUTINE GET_Eta_U_V_HU_HV(ng)
      USE GLOBAL
      IMPLICIT NONE
      REAL(SP)::Fr,Utotal,Utheta,dep,depl,depr,reta,retal,retar
@@ -301,6 +289,7 @@ SUBROUTINE GET_Eta_U_V_HU_HV
 # endif 
 # endif 
       INTEGER :: IM
+      INTEGER,INTENT(IN) :: ng
 
 ! calculate etar, u and vetar, HU, HV
      H=Eta*Gamma3+Depth
@@ -351,6 +340,30 @@ SUBROUTINE GET_Eta_U_V_HU_HV
      ENDIF
 # endif
 
+!--------------------------------------------
+! boundary condition for ng>1, AMR
+     IF(ng.gt.1)THEN
+# if defined (PARALLEL)
+	IF( n_west .eq. MPI_PROC_NULL ) THEN
+        IF(I.eq.Ibeg)THEN
+          tmp4=tmp4-tmp1*U(I-1,J)
+        ENDIF
+	ENDIF
+	IF( n_east .eq. MPI_PROC_NULL ) THEN
+        IF(I.eq.Iend)THEN
+          tmp4=tmp4-tmp3*U(I+1,J)
+        ENDIF
+	ENDIF
+# else
+      IF(I.eq.Ibeg)THEN
+       tmp4=tmp4-tmp1*U(I-1,J)
+	ENDIF
+      IF(I.eq.Iend)THEN
+       tmp4=tmp4-tmp3*U(I+1,J)
+      ENDIF
+# endif
+     ENDIF
+!--------------------------------------------
 
        IF(tmp2.NE.0.0_SP.OR.MASK(I,J).GT.0)THEN
           myA(I,J)=tmp1/tmp2
@@ -428,6 +441,31 @@ SUBROUTINE GET_Eta_U_V_HU_HV
        ENDIF
      ENDIF
 # endif
+
+!--------------------------------------------
+! boundary condition for ng>1, AMR
+     IF(ng.gt.1)THEN
+# if defined (PARALLEL)
+	IF( n_suth .eq. MPI_PROC_NULL ) THEN
+       IF(J.eq.Jbeg)THEN
+         tmp4=tmp4-tmp1*V(I,J-1)
+       ENDIF
+	ENDIF
+	IF( n_nrth .eq. MPI_PROC_NULL ) THEN      
+	 IF(J.eq.Jend)THEN
+         tmp4=tmp4-tmp3*V(I,J+1)
+       ENDIF
+	ENDIF
+# else
+       IF(J.eq.Jbeg)THEN
+         tmp4=tmp4-tmp1*V(I,J-1)
+       ENDIF
+	 IF(J.eq.Jend)THEN
+         tmp4=tmp4-tmp3*V(I,J+1)
+       ENDIF
+# endif
+     ENDIF
+!--------------------------------------------
   
        IF(tmp2.NE.0.0_SP.OR.MASK(I,J).GT.0)THEN
          myA(I,J)=tmp1/tmp2

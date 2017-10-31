@@ -62,13 +62,25 @@ SUBROUTINE WAVE_BREAKING
      IMPLICIT NONE
 
       IF(SHOW_BREAKING)THEN
-        CALL BREAKING(Mloc,Nloc,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,DT,&
-               DX,DY,T_brk,AGE_BREAKING)
-
+# if defined(CARTESIAN)
+        CALL BREAKING(Mloc,Nloc,ETAx(1:Mloc,1:Nloc),ETAy(1:Mloc,1:Nloc),ETAT(1:Mloc,1:Nloc), &
+	         Cbrk1,Cbrk2,H(1:Mloc,1:Nloc),MinDepthFrc,DT,&
+               DX,DY,T_brk,AGE_BREAKING(1:Mloc,1:Nloc))
+# else
+        CALL BREAKING(Mloc,Nloc,ETAx(1:Mloc,1:Nloc),ETAy(1:Mloc,1:Nloc),ETAT(1:Mloc,1:Nloc), &
+	         Cbrk1,Cbrk2,H(1:Mloc,1:Nloc),MinDepthFrc,DT,&
+               DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),T_brk,AGE_BREAKING(1:Mloc,1:Nloc))
+# endif 
 	ELSEIF( WAVEMAKER_VIS )THEN
 	  ! ykchoi(08.19.2015)
 	  !
-        CALL VISCOSITY_WMAKER(Mloc,Nloc,ETAT,visbrk,H,MinDepthFrc,DX,DY)
+# if defined(CARTESIAN)
+        CALL VISCOSITY_WMAKER(Mloc,Nloc,ETAT(1:Mloc,1:Nloc),visbrk,H(1:Mloc,1:Nloc), &
+	       MinDepthFrc,DX,DY)
+# else
+        CALL VISCOSITY_WMAKER(Mloc,Nloc,ETAT(1:Mloc,1:Nloc),visbrk,H(1:Mloc,1:Nloc), &
+	       MinDepthFrc,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc))
+# endif 
       ENDIF
 
 
@@ -97,7 +109,6 @@ SUBROUTINE BREAKING(M,N,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,&
      REAL(SP),INTENT(IN)::Cbrk1,Cbrk2,MinDepthFrc,DT,T_brk
      REAL(SP) :: cap1,cap2
      REAL(SP) :: xmk,ymk,DXg,DYg
-     REAL(SP) :: etat_star,B,T_star
 !     REAL(SP) :: lim_breaker=0.10
 # if defined (CARTESIAN)
      REAL(SP),INTENT(IN)::DX,DY
@@ -108,33 +119,12 @@ SUBROUTINE BREAKING(M,N,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,&
      REAL(SP),DIMENSION(M,N),INTENT(OUT)::AGE
      REAL(SP)::C,Angle,AGE1,AGE2,AGE3,propx,propy,propxy
 
-    
-
-     DO J = Jbeg, Jend
-     DO I = Ibeg, Iend
-
-! make T_brk as function of depth
-!   T_brk = 10.0_SP*SQRT(MAX(Depth(I,J),MinDepthFrc)/GRAV)
+     DO J=Nghost+1,N-Nghost
+     DO I=Nghost+1,M-Nghost
 
      tmp3=SQRT(GRAV*MAX(MinDepthFrc,H(I,J)))
      tmp1=Cbrk1*tmp3
      tmp2=Cbrk2*tmp3
-
-# if defined (VIS_DEPTH_RATIO)
-
-      IF(ABS(Eta(I,J))/MAX(DEPTH(I,J),MinDepthFrc)>SWE_ETA_DEP)THEN
-
-       cap1=1.0*(MAX(Depth(I,J),MinDepthFrc)+ETA(I,J))
-
-        IF(ETAt(I,J)>tmp1.AND.ETAt(I,J)<=2.0_SP*tmp1)THEN
-         B = ETAt(I,J)/tmp1-1.0_SP
-        ELSEIF(ETAt(I,J)>2.0_SP*tmp1)THEN
-         B = 1.0_SP
-        ENDIF
-        nu_break(I,J) = cap1*tmp2*(1.0_SP+B) + nu_bkg
-     
-# else
-
      IF(ETAt(I,J).GE.tmp1.AND.(  &
        AGE(I,J).EQ.ZERO.OR.AGE(I,J).GT.T_brk))THEN
       AGE(I,J)=DT
@@ -158,12 +148,7 @@ SUBROUTINE BREAKING(M,N,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,&
         propx=SQRT(DX(I,J)*DX(I,J))/MAX(C,SMALL)
         propy=SQRT(DY(I,J)*DY(I,J))/MAX(C,SMALL)
 # endif
-
-!  I did two changes
-!  1) conversion 180/pi
-!  2) add - to get right quadrants
-!  
-        ANGLE=ATAN2(-ETAy(I,J),-ETAx(I,J))*180.0_SP/PI
+        ANGLE=ATAN2(ETAy(I,J),ETAx(I,J))
 
         IF(ETAt(I,J).GE.tmp2)THEN
 ! 4 quadrants 
@@ -233,10 +218,6 @@ SUBROUTINE BREAKING(M,N,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,&
     IF(ABS(xmk-Xc_WK)<Width_WK.AND. &
             ABS(ymk-Yc_WK)<Ywidth_WK/2.0_SP)THEN
 
-! remove wavebreaking inside wavemaker
-
-!         nu_break(I,J) = ZERO
-
       IF(ETAt(I,J)>MIN(tmp2,WAVEMAKER_Cbrk*tmp3))THEN
          cap1=1.0*(MAX(Depth(I,J),MinDepthFrc)+ETA(I,J))
          nu_break(I,J)=cap1*WAVEMAKER_Cbrk*tmp3+nu_bkg
@@ -260,54 +241,18 @@ SUBROUTINE BREAKING(M,N,ETAx,ETAy,ETAT,Cbrk1,Cbrk2,H,MinDepthFrc,&
 !      I used before the transition scheme. It worked well but
 !      we should re-calibrate Cbrk2. 
 !   
-# if defined (VIS_KENNEDY_ORIGINAL)
-
-! etat_star
-        etat_star=tmp2
-        T_star=5.0_SP*SQRT(MAX(Depth(I,J),MinDepthFrc)/GRAV)
-        IF(AGE(I,J)>=0.0_SP.AND.AGE(I,J)<T_star)THEN
-          etat_star=tmp1+AGE(I,J)/T_star*(tmp2-tmp1)
-        ENDIF
-! B
-        B = 0.0_SP
-        IF(ETAt(I,J)>etat_star.AND.ETAt(I,J)<=2.0_SP*etat_star)THEN
-         B = ETAt(I,J)/etat_star-1.0_SP
-        ELSEIF(ETAt(I,J)>2.0_SP*etat_star)THEN
-         B = 1.0_SP
-        ENDIF
-        
-        nu_break(I,J)=cap1*ABS(ETAt(I,J))*B+nu_bkg
-
-# elif defined (VIS_KENNEDY)
-
-! this is a modified Kennedy breaker, I removed etat_star because the TVD is more stable
-! I also modified the transition, the original of which caused instability
-
-        B = 0.0_SP
-        IF(ETAt(I,J)>tmp1.AND.ETAt(I,J)<=2.0_SP*tmp1)THEN
-         B = ETAt(I,J)/tmp1-1.0_SP
-        ELSEIF(ETAt(I,J)>2.0_SP*tmp1)THEN
-         B = 1.0_SP
-        ENDIF
-
-        nu_break(I,J) = cap1*tmp2*(1.0_SP+B) + nu_bkg
-       
-
+# if defined (VIS_KENNEDY)
+        nu_break(I,J)=cap1*ABS(ETAt(I,J))+nu_bkg
 # elif defined (VIS_STATIC_TRANS)
          nu_break(I,J)=cap1*tmp3*(Cbrk2+(Cbrk1-Cbrk2)*(T_brk-AGE(I,J))/T_brk)+nu_bkg
 # else
         nu_break(I,J) = cap1*tmp2 + nu_bkg
 # endif
-
-
      ELSE
        nu_break(I,J)=ZERO+nu_bkg
      ENDIF
           
    ENDIF ! end wavemaker
-
-# endif
-  ! end vis_depth_ratio
 
      ENDDO
      ENDDO

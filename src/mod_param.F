@@ -50,11 +50,12 @@
 !          the module is updated corresponding to modifications in subroutines
 !-------------------------------------------------------------------------------------
 
-MODULE PARAM  
+MODULE PARAM
 # if defined PARALLEL
        USE MPI
 # endif
-       IMPLICIT NONE    
+       IMPLICIT NONE
+
 # if defined DOUBLE_PRECISION 
        INTEGER, PARAMETER::SP=8
 # if defined PARALLEL
@@ -75,11 +76,10 @@ MODULE PARAM
        REAL(SP), PARAMETER:: grav=9.81_SP
        REAL(SP), PARAMETER:: zero = 0.0_SP
        REAL(SP), PARAMETER:: RHO_AW = 0.0012041_SP
-       REAL(SP), PARAMETER:: RHO_WATER = 1000.0_SP
        REAL(SP), PARAMETER:: DEG2RAD = 0.0175_SP
 
 ! some global variables
-       INTEGER :: I,J,K, RES
+       INTEGER :: I,J,K
        INTEGER :: itmp1,itmp2,itmp3,itmp4,itmp5
        REAL(SP):: tmp1,tmp2,tmp3,tmp4,tmp5
 

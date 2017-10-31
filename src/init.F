@@ -54,6 +54,76 @@
 SUBROUTINE ALLOCATE_VARIABLES
      USE GLOBAL
 
+!==================== begin : nesting (AMR) !ykchoi
+     Mloc = MaxDimX
+     Nloc = MaxDimY
+
+     Mloc1 = Mloc+1
+     Nloc1 = Nloc+1
+
+! allocate nesting
+     IF(NumGrid.GT.1)THEN
+       ALLOCATE(  U_NESTING_EAST(Nloc,Nghost,2), &
+                  V_NESTING_EAST(Nloc,Nghost,2), &
+                  Z_NESTING_EAST(Nloc,Nghost,2), &
+                  U_NESTING_WEST(Nloc,Nghost,2), &
+                  V_NESTING_WEST(Nloc,Nghost,2), &
+                  Z_NESTING_WEST(Nloc,Nghost,2), &
+                  U_NESTING_SOUTH(Mloc,Nghost,2), &
+                  V_NESTING_SOUTH(Mloc,Nghost,2), &
+                  Z_NESTING_SOUTH(Mloc,Nghost,2), &
+                  U_NESTING_NORTH(Mloc,Nghost,2), &
+                  V_NESTING_NORTH(Mloc,Nghost,2), &
+                  Z_NESTING_NORTH(Mloc,Nghost,2)  )
+
+       U_NESTING_EAST = ZERO
+	 V_NESTING_EAST = ZERO
+	 Z_NESTING_EAST = ZERO
+	 U_NESTING_WEST = ZERO
+	 V_NESTING_WEST = ZERO
+	 Z_NESTING_WEST = ZERO
+	 U_NESTING_SOUTH = ZERO
+	 V_NESTING_SOUTH = ZERO
+	 Z_NESTING_SOUTH = ZERO
+	 U_NESTING_NORTH = ZERO
+	 V_NESTING_NORTH = ZERO
+	 Z_NESTING_NORTH = ZERO
+
+       ALLOCATE(  U_NESTING_EAST_PAR(Nloc,Nghost,2), &
+                  V_NESTING_EAST_PAR(Nloc,Nghost,2), &
+                  Z_NESTING_EAST_PAR(Nloc,Nghost,2), &
+                  U_NESTING_WEST_PAR(Nloc,Nghost,2), &
+                  V_NESTING_WEST_PAR(Nloc,Nghost,2), &
+                  Z_NESTING_WEST_PAR(Nloc,Nghost,2), &
+                  U_NESTING_SOUTH_PAR(Mloc,Nghost,2), &
+                  V_NESTING_SOUTH_PAR(Mloc,Nghost,2), &
+                  Z_NESTING_SOUTH_PAR(Mloc,Nghost,2), &
+                  U_NESTING_NORTH_PAR(Mloc,Nghost,2), &
+                  V_NESTING_NORTH_PAR(Mloc,Nghost,2), &
+                  Z_NESTING_NORTH_PAR(Mloc,Nghost,2)  )
+
+       U_NESTING_EAST_PAR = ZERO
+	 V_NESTING_EAST_PAR = ZERO
+	 Z_NESTING_EAST_PAR = ZERO
+	 U_NESTING_WEST_PAR = ZERO
+	 V_NESTING_WEST_PAR = ZERO
+	 Z_NESTING_WEST_PAR = ZERO
+	 U_NESTING_SOUTH_PAR = ZERO
+	 V_NESTING_SOUTH_PAR = ZERO
+	 Z_NESTING_SOUTH_PAR = ZERO
+	 U_NESTING_NORTH_PAR = ZERO
+	 V_NESTING_NORTH_PAR = ZERO
+	 Z_NESTING_NORTH_PAR = ZERO
+
+# if defined (PARALLEL)       
+	 ALLOCATE( EastParentID(Nghost,Nloc,NumGrid), &
+			   WestParentID(Nghost,Nloc,NumGrid), &
+			   SouthParentID(Mloc,Nghost,NumGrid), &
+			   NorthParentID(Mloc,Nghost,NumGrid)  )
+# endif
+     ENDIF
+!========================================================
+
 ! allocate variables
      ALLOCATE(DelxU(Mloc,Nloc),DelxHU(Mloc,Nloc),DelxV(Mloc,Nloc),DelxEtar(Mloc,Nloc),&
               DelyU(Mloc,Nloc),DelyHV(Mloc,Nloc),DelyV(Mloc,Nloc),DelyEtar(Mloc,Nloc),&
@@ -135,7 +205,7 @@ SUBROUTINE ALLOCATE_VARIABLES
                MASK(Mloc,Nloc),DepthNode(Mloc1,Nloc1), &
                MASK_STRUC(Mloc,Nloc),MASK9(Mloc,Nloc), &
                tmp4preview(Mloc,Nloc),Int2Flo(Mloc,Nloc),&
-               Cd(Mloc,Nloc),CD_breakwater(Mloc,Nloc) &
+               Cd(Mloc,Nloc) &
               )
 ! updating variables
       ALLOCATE(Eta(Mloc,Nloc),Eta0(Mloc,Nloc), &
@@ -218,7 +288,6 @@ END SUBROUTINE ALLOCATE_VARIABLES
 SUBROUTINE INITIALIZATION
      USE GLOBAL
      USE INPUT_READ
-     USE BATHY_CORRECTION_MODULE
 # if defined(INTEL)
      USE IFPORT
 # endif
@@ -236,9 +305,9 @@ SUBROUTINE INITIALIZATION
 
    IF(StretchGrid) THEN
 # if defined (PARALLEL)
-       CALL GetFile(DX_FILE,Dx)
-       CALL GetFile(DY_FILE,Dy)
-       CALL GetFile(Coriolis_FILE,Coriolis)
+       CALL GetFile(DX_FILE,Dx(1:Mloc,1:Nloc))
+       CALL GetFile(DY_FILE,Dy(1:Mloc,1:Nloc))
+       CALL GetFile(Coriolis_FILE,Coriolis(1:Mloc,1:Nloc))
 # else
       OPEN(1,FILE=TRIM(DX_FILE))
        DO J=Jbeg,Jend
@@ -507,31 +576,23 @@ SUBROUTINE INITIALIZATION
 ! bathymetry
 
   IF(DEPTH_TYPE(1:3)=='DAT')THEN
-
-! check existing
-
- INQUIRE(FILE=TRIM(DEPTH_FILE),EXIST=FILE_EXIST)
-  IF(.NOT.FILE_EXIST)THEN
 # if defined (PARALLEL)
-   IF(MYID==0)  &
-   WRITE(*,*) TRIM(DEPTH_FILE), 'CANNOT BE FOUND. STOP'
-   CALL MPI_FINALIZE (ier)
-   STOP
-# else
-    WRITE(*,*) TRIM(DEPTH_FILE), 'CANNOT BE FOUND. STOP'
-    STOP
-# endif
-  ENDIF  ! exist
-
-# if defined (PARALLEL)
-     call GetFile (DEPTH_FILE,Depth)
+     call GetFile (DEPTH_FILE,Depth(1:Mloc,1:Nloc))
 # else
      OPEN(1,FILE=TRIM(DEPTH_FILE))
-
+     IF(DepthFormat(1:3)=='ELE')THEN
        DO J=Jbeg,Jend
         READ(1,*)(Depth(I,J),I=Ibeg,Iend)
        ENDDO
 
+     ELSEIF(DepthFormat(1:3)=='NOD')THEN
+       DO J=Jbeg,Jend1
+        READ(1,*)(DepthNode(I,J),I=Ibeg,Iend1)
+       ENDDO
+     ELSE
+       WRITE(*,*)'DepthFormat specified wrong, STOP'
+       STOP
+     ENDIF
      CLOSE(1)
 # endif
   ENDIF
@@ -543,6 +604,7 @@ SUBROUTINE INITIALIZATION
      ENDDO
     ENDDO
 
+    DepthFormat(1:3)='ELE'
   ENDIF
 
 # if defined (PARALLEL)
@@ -564,10 +626,10 @@ SUBROUTINE INITIALIZATION
 # endif
     ENDDO ! end of J
 
-    CALL DISTRIBUTE_VarGlob (VarGlob,Depth)
+    CALL DISTRIBUTE_VarGlob (VarGlob,Depth(1:Mloc,1:Nloc))
 
     DEALLOCATE (VarGlob)
-
+    DepthFormat(1:3)='ELE'
   ENDIF
 
 # else
@@ -595,11 +657,14 @@ SUBROUTINE INITIALIZATION
      ENDDO
 # endif
     ENDDO
+    DepthFormat(1:3)='ELE'
   ENDIF
 # endif
 
 ! depth at ghost cells and re-construct depth at x,y-interfaces
 
+
+    IF(DepthFormat(1:3)=='ELE')THEN
 # if defined(PARALLEL)
 ! done at the last step
 # else
@@ -623,11 +688,6 @@ SUBROUTINE INITIALIZATION
      ENDDO  
 # endif  
 
-! correction bathymetry
-    IF (BATHY_CORRECTION)THEN
-      CALL CORRECTION 
-    ENDIF
-
 ! re-construct Depth
 
      DO J=1,Nloc
@@ -650,19 +710,49 @@ SUBROUTINE INITIALIZATION
       DepthY(I,Nloc1)=0.5_SP*(3.0_SP*Depth(I,Nloc)-Depth(I,Nloc-1))
      ENDDO
 
+    ELSEIF(DepthFormat(1:3)=='NOD')THEN
+
+! ghost cells
+     DO I=1,Mloc1
+       DO J=1,Nghost
+        DepthNode(I,J)=DepthNode(I,Jbeg)
+       ENDDO
+       DO J=Jend1+1,Nloc1
+        DepthNode(I,J)=DepthNode(I,Jend1)
+       ENDDO
+     ENDDO
+
+     DO J=1,Nloc1
+       DO I=1,Nghost
+        DepthNode(I,J)=DepthNode(Ibeg,J)
+       ENDDO
+       DO I=Iend1+1,Mloc1
+        DepthNode(I,J)=DepthNode(Iend1,J)
+       ENDDO
+     ENDDO    
+
+! reconstruct depth at x,y-interfaces
+     DO J=1,Nloc
+     DO I=1,Mloc1
+      DepthX(I,J)=0.5_SP*(DepthNode(I,J)+DepthNode(I,J+1))
+     ENDDO
+     ENDDO
+     DO J=1,Nloc1
+     DO I=1,Mloc
+      DepthY(I,J)=0.5_SP*(DepthNode(I,J)+DepthNode(I+1,J))
+     ENDDO
+     ENDDO
+      
+    ENDIF
+
 !   dont need to re-construct depth in terms of using well-balanced scheme
 !   01/21/2012
-!   initially we tried to reconstruct depth in order to keep consistency
-!   between depth_ele and depth_nod. It turned out it is easy to cause
-!   errors if trying to make artifial high walls for dry points 
-!   (results in large slopes). We decide to remove the option of reading depth_nod
-!   and the reconstruction. fyshi (11/14/2016)
-
-!     DO J=1,Nloc
-!     DO I=1,Mloc
-!       Depth(I,J)=0.25_SP*(Depthx(I,J)+Depthx(I+1,J)+Depthy(I,J)+Depthy(I,J+1))
-!     ENDDO
-!     ENDDO
+!   add this to keep consistent with the old version 09/06/2012
+     DO J=1,Nloc
+     DO I=1,Mloc
+       Depth(I,J)=0.25_SP*(Depthx(I,J)+Depthx(I+1,J)+Depthy(I,J)+Depthy(I,J+1))
+     ENDDO
+     ENDDO
 
 ! add waterlevel 03/29/2016
 
@@ -679,7 +769,7 @@ SUBROUTINE INITIALIZATION
 !friction
      IF(IN_Cd) THEN
 # if defined (PARALLEL)
-      call GetFile(CD_FILE,Cd)
+      call GetFile(CD_FILE,Cd(1:Mloc,1:Nloc))
 # else
       OPEN(1,FILE=TRIM(CD_FILE))
        DO J=Jbeg,Jend
@@ -725,7 +815,7 @@ SUBROUTINE INITIALIZATION
 ! initial solitary wave
      IF(WaveMaker(1:7)=='INI_SOL') THEN
        CALL INITIAL_SOLITARY_WAVE(Mloc,Nloc, DX,Xwavemaker,& 
-          AMP_SOLI,Dep_Soli,Beta_ref,U,V,Eta)
+          AMP_SOLI,Dep_Soli,Beta_ref,U(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc))
      ENDIF
 # endif
 
@@ -733,7 +823,7 @@ SUBROUTINE INITIALIZATION
 ! initial N wave
      IF(WaveMaker(1:6)=='N_WAVE') THEN
        CALL INITIAL_N_WAVE(Mloc,Nloc, DX,x1_Nwave,& 
-          x2_Nwave,a0_Nwave,gamma_Nwave,dep_Nwave,U,V,Eta)
+          x2_Nwave,a0_Nwave,gamma_Nwave,dep_Nwave,U(1:Mloc,1:Nloc),V(1:Mloc,1:Nloc),Eta(1:Mloc,1:Nloc))
      ENDIF
 # endif
 
@@ -742,10 +832,10 @@ SUBROUTINE INITIALIZATION
      IF(WaveMaker(1:7)=='INI_REC') THEN
 # if defined (CARTESIAN)
        CALL INITIAL_RECTANGULAR(Mloc,Nloc,Nghost,DX,DY,Xc,Yc,WID,AMP_SOLI, &
-                      Eta)
+                      Eta(1:Mloc,1:Nloc))
 # else
        CALL INITIAL_RECTANGULAR(Mloc,Nloc,Nghost,Dphi,Dtheta,Lon_West,Lat_South, &
-             Xc,Yc,WID,AMP_SOLI,Eta)
+             Xc,Yc,WID,AMP_SOLI,Eta(1:Mloc,1:Nloc))
 # endif
      ENDIF
 # endif
@@ -755,20 +845,20 @@ SUBROUTINE INITIALIZATION
      IF(WaveMaker(1:7)=='INI_GAU') THEN
 # if defined (CARTESIAN)
        CALL INITIAL_GAUSIAN(Mloc,Nloc,Nghost,DX,DY,Xc,Yc,AMP_SOLI, WID,&
-                      Eta)
+                      Eta(1:Mloc,1:Nloc))
 # else
        CALL INITIAL_GAUSIAN(Mloc,Nloc,Nghost,Dphi,Dtheta,Lon_West,Lat_South, &
-             Xc,Yc,AMP_SOLI,WID,Eta)
+             Xc,Yc,AMP_SOLI,WID,Eta(1:Mloc,1:Nloc))
 # endif
      ENDIF
 ! initial dipole from x-derivative of gausian hump
      IF(WaveMaker(1:7)=='INI_DIP') THEN
 # if defined (CARTESIAN)
        CALL INITIAL_DIPOLE(Mloc,Nloc,Nghost,DX,DY,Xc,Yc,AMP_SOLI, WID,&
-                      Eta)
+                      Eta(1:Mloc,1:Nloc))
 # else
        CALL INITIAL_DIPOLE(Mloc,Nloc,Nghost,Dphi,Dtheta,Lon_West,Lat_South, &
-             Xc,Yc,AMP_SOLI,WID,Eta)
+             Xc,Yc,AMP_SOLI,WID,Eta(1:Mloc,1:Nloc))
 # endif
      ENDIF
 # endif
@@ -784,17 +874,31 @@ SUBROUTINE INITIALIZATION
    
    
      IF(DIRECT_SPONGE)THEN
+# if defined(CARTESIAN)
        CALL CALCULATE_SPONGE(Mloc,Nloc,Nghost,DX,DY,&
                             Sponge_west_width,Sponge_east_width,&
                             Sponge_south_width,Sponge_north_width, &
-                            R_sponge,A_sponge,SPONGE)
+                            R_sponge,A_sponge,SPONGE(1:Mloc,1:Nloc))
+# else
+       CALL CALCULATE_SPONGE(Mloc,Nloc,Nghost,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),&
+                            Sponge_west_width,Sponge_east_width,&
+                            Sponge_south_width,Sponge_north_width, &
+                            R_sponge,A_sponge,SPONGE(1:Mloc,1:Nloc))
+# endif
      ENDIF
 
      IF(DIFFUSION_SPONGE)THEN
+# if defined(CARTESIAN)
        CALL CALCULATE_DIFFUSION_SPONGE(Mloc,Nloc,Nghost,DX,DY,&
                             Sponge_west_width,Sponge_east_width,&
                             Sponge_south_width,Sponge_north_width, &
-                            R_sponge,A_sponge,nu_sponge)
+                            R_sponge,A_sponge,nu_sponge(1:Mloc,1:Nloc))
+# else
+       CALL CALCULATE_DIFFUSION_SPONGE(Mloc,Nloc,Nghost,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),&
+                            Sponge_west_width,Sponge_east_width,&
+                            Sponge_south_width,Sponge_north_width, &
+                            R_sponge,A_sponge,nu_sponge(1:Mloc,1:Nloc))
+# endif
      ENDIF
 
      IF(FRICTION_SPONGE)THEN
@@ -802,17 +906,30 @@ SUBROUTINE INITIALIZATION
        IF(.NOT.ALLOCATED(CD_4_SPONGE)) ALLOCATE(CD_4_SPONGE(Mloc,Nloc))
        CD_4_SPONGE = ZERO
 
+# if defined(CARTESIAN)
        CALL CALCULATE_FRICTION_SPONGE(Mloc,Nloc,Nghost,DX,DY,&
                             Sponge_west_width,Sponge_east_width,&
                             Sponge_south_width,Sponge_north_width, &
-                            R_sponge,A_sponge,CD_4_SPONGE)
+                            R_sponge,A_sponge,CD_4_SPONGE(1:Mloc,1:Nloc))
+# else
+       CALL CALCULATE_FRICTION_SPONGE(Mloc,Nloc,Nghost,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),&
+                            Sponge_west_width,Sponge_east_width,&
+                            Sponge_south_width,Sponge_north_width, &
+                            R_sponge,A_sponge,CD_4_SPONGE(1:Mloc,1:Nloc))
+# endif
      ENDIF
 
 
      IF(WaveMaker(1:3)=='ABS')THEN
+# if defined(CARTESIAN)
        CALL CALCULATE_SPONGE_MAKER(Mloc,Nloc,Nghost,DX,DY,&
                             WidthWaveMaker, &
-                            R_sponge_wavemaker,A_sponge_wavemaker,SpongeMaker)
+                            R_sponge_wavemaker,A_sponge_wavemaker,SpongeMaker(1:Mloc,1:Nloc))
+# else
+       CALL CALCULATE_SPONGE_MAKER(Mloc,Nloc,Nghost,DX(1:Mloc,1:Nloc),DY(1:Mloc,1:Nloc),&
+                            WidthWaveMaker, &
+                            R_sponge_wavemaker,A_sponge_wavemaker,SpongeMaker(1:Mloc,1:Nloc))
+# endif
      ENDIF
 
 ! get Eta and H
@@ -821,7 +938,7 @@ SUBROUTINE INITIALIZATION
      HV=H*V
     
      IF(DISPERSION)THEN
-       CALL CAL_DISPERSION
+       CALL CAL_DISPERSION(1)  !For AMR routine !ykchoi
      ENDIF
     
      Ubar=HU+gamma1*U1p*H
@@ -859,7 +976,7 @@ SUBROUTINE INITIALIZATION
 # if defined (PARALLEL)
      IF(.NOT.ALLOCATED(VarGlob)) ALLOCATE (VarGlob(Mloc,Nloc)) ! use local here 
      
-     call GetFile ( OBSTACLE_FILE, VarGlob )    
+     call GetFile ( OBSTACLE_FILE, VarGlob(1:Mloc,1:Nloc) )    
 
      MASK_STRUC = INT(VarGlob)
      DEALLOCATE(VarGlob)
@@ -871,91 +988,7 @@ SUBROUTINE INITIALIZATION
      CLOSE(1)
 # endif
      ENDIF
-
-! read breakwater 
-     IF(BREAKWATER)THEN
-
-  INQUIRE(FILE=TRIM(BREAKWATER_FILE),EXIST=FILE_EXIST)
-  IF(.NOT.FILE_EXIST)THEN
-# if defined (PARALLEL)
-   IF(MYID==0)  &
-   WRITE(*,*) TRIM(BREAKWATER_FILE), ' specified in input.txt but CANNOT BE FOUND. STOP'
-   CALL MPI_FINALIZE (ier)
-   STOP
-# else
-    WRITE(*,*) TRIM(BREAKWATER_FILE), ' specified in input.txt but CANNOT BE FOUND. STOP'
-    STOP
-# endif
-  ENDIF
-
-! we have to use global for width 
-     ALLOCATE(BreakWaterWidth(Mglob+2*Nghost,Nglob+2*Nghost))
-     BreakWaterWidth = 0.0_SP     
-
-# if defined (PARALLEL)
-     if (myid.eq.0) then
-        OPEN(1,FILE=TRIM(BREAKWATER_FILE))
-        DO J=Nghost+1,NGlob+NGhost
-           READ(1,*)(BreakWaterWidth(I,J),I=Nghost+1,MGlob+Nghost)
-        ENDDO
-        CLOSE(1)
-! ghost cells
-        DO I=Nghost+1,MGlob+Nghost
-           DO J=1,Nghost
-              BreakWaterWidth(I,J)=BreakWaterWidth(I,Nghost+1)
-           ENDDO
-           DO J=NGlob+Nghost+1,NGlob+2*Nghost
-              BreakWaterWidth(I,J)=BreakWaterWidth(I,NGlob+Nghost)
-           ENDDO
-        ENDDO
-        DO J=1,NGlob+2*Nghost
-           DO I=1,Nghost
-              BreakWaterWidth(I,J)=BreakWaterWidth(Nghost+1,J)
-           ENDDO
-           DO I=MGlob+Nghost+1,MGlob+2*Nghost
-              BreakWaterWidth(I,J)=BreakWaterWidth(MGlob+Nghost,J)
-           ENDDO
-        ENDDO
-     endif
-
-# else
-     OPEN(1,FILE=TRIM(BREAKWATER_FILE))
-
-       DO J=Jbeg,Jend
-        READ(1,*)(BreakWaterWidth(I,J),I=Ibeg,Iend)
-       ENDDO
-
-     CLOSE(1)
-
-
-! ghost cells
-     DO I=Ibeg,Iend
-       DO J=1,Nghost
-        BreakWaterWidth(I,J)=BreakWaterWidth(I,Jbeg)
-       ENDDO
-       DO J=Jend+1,Nloc
-        BreakWaterWidth(I,J)=BreakWaterWidth(I,Jend)
-       ENDDO
-     ENDDO
-
-     DO J=1,Nloc
-       DO I=1,Nghost
-        BreakWaterWidth(I,J)=BreakWaterWidth(Ibeg,J)
-       ENDDO
-       DO I=Iend+1,Mloc
-        BreakWaterWidth(I,J)=BreakWaterWidth(Iend,J)
-       ENDDO
-     ENDDO  
-
-# endif
-     CALL CALCULATE_CD_BREAKWATER
-
-     DEALLOCATE(BreakWaterWidth)
-
-     ENDIF  ! endif breakwater
-! end breakwater
-
-
+       
 # if defined (WIND)
 ! wind force ! now constant wind, can use WindU2D for 2D applications
         ALLOCATE(WindU2D(Mloc,Nloc),WindV2D(Mloc,Nloc),MASK_WIND(Mloc,Nloc))
@@ -1020,8 +1053,8 @@ SUBROUTINE INITIALIZATION
      ENDDO
 
 # if defined(PARALLEL)
-     CALL PHI_INT_EXCH(MASK)
-     CALL PHI_INT_EXCH(MASK9)
+     CALL PHI_INT_EXCH(MASK(1:Mloc,1:Nloc))
+     CALL PHI_INT_EXCH(MASK9(1:Mloc,1:Nloc))
 # endif
 
 
@@ -1102,8 +1135,6 @@ SUBROUTINE INITIAL_UVZ
       REAL(SP),DIMENSION(Mloc,Nloc) :: rMASK
       LOGICAL :: FILE_EXIST
 
-IF(.NOT.NO_UV_FILE)THEN
-
   INQUIRE(FILE=TRIM(U_FILE),EXIST=FILE_EXIST)
   IF(.NOT.FILE_EXIST)THEN
 # if defined (PARALLEL)
@@ -1129,8 +1160,6 @@ IF(.NOT.NO_UV_FILE)THEN
 # endif
   ENDIF
 
-ENDIF
-
   INQUIRE(FILE=TRIM(ETA_FILE),EXIST=FILE_EXIST)
   IF(.NOT.FILE_EXIST)THEN
 # if defined (PARALLEL)
@@ -1143,24 +1172,16 @@ ENDIF
 # endif
   ENDIF
 
+
 # if defined (PARALLEL)
-IF(.NOT.NO_UV_FILE)THEN
-      CALL GetFile(U_FILE,U)
-      CALL GetFile(V_FILE,V)
-ELSE
-      U=ZERO
-      V=ZERO
-ENDIF
-
-      CALL GetFile(ETA_FILE,ETA)
-
+      CALL GetFile(U_FILE,U(1:Mloc,1:Nloc))
+      CALL GetFile(V_FILE,V(1:Mloc,1:Nloc))
+      CALL GetFile(ETA_FILE,ETA(1:Mloc,1:Nloc))
       IF(.NOT.NO_MASK_FILE)THEN
-      CALL GetFile(MASK_FILE,rMASK)
+      CALL GetFile(MASK_FILE,rMASK(1:Mloc,1:Nloc))
       ENDIF
-
 # else
 
-IF(.NOT.NO_UV_FILE)THEN
       OPEN(1,FILE=TRIM(U_FILE))
        DO J=Nghost+1,Nloc-Nghost
         READ(1,*)(U(I,J),I=Nghost+1,Mloc-Nghost)
@@ -1172,10 +1193,6 @@ IF(.NOT.NO_UV_FILE)THEN
         READ(1,*)(V(I,J),I=Nghost+1,Mloc-Nghost)
        ENDDO
       CLOSE(1)
-ELSE
-      U=ZERO
-      V=ZERO
-ENDIF
 
       OPEN(1,FILE=TRIM(ETA_FILE))
        DO J=Nghost+1,Nloc-Nghost
@@ -1195,12 +1212,104 @@ ENDIF
 
      IF(.NOT.NO_MASK_FILE)THEN
       MASK=INT(rMASK)
-     ELSE
-      MASK = 1
      ENDIF
 
 END SUBROUTINE INITIAL_UVZ
 
 
 
+!==================For AMR routine ykchoi
+# if defined (PARALLEL)
+! ----------------------------------------------------
+!    This is subroutine to index for MPI
+!  called by 
+!        MAIN
+!    Last Update: 05/06/2010 Fengyan Shi, University of Delaware
+! --------------------------------------------------
 
+SUBROUTINE PARALLEL_CARTESIAN
+!    USE GLOBAL,ONLY: PX,PY,dims,periods,coords,ndims,comm2d,ier,myid,&
+!                     coords,n_west, n_east, n_suth, n_nrth,&
+!                     NumberProcessor,npx,npy,PERIODIC,reorder
+    USE GLOBAL
+    USE MPI
+    IMPLICIT NONE
+
+    INTEGER :: icp
+
+    ALLOCATE(ProcessorID(PX,PY))
+
+    NumberProcessor = px*py
+    dims(1) = px
+    dims(2) = py
+    periods(1) = .false.
+    periods(2) = .false.
+
+! dont use periodic because our TRID solver is not based on
+!  the cyclic topology  
+!    IF(PERIODIC) periods(2) = .true.  
+    
+    coords(1) = 0
+    coords(2) = 0
+
+    call MPI_CART_CREATE( MPI_COMM_WORLD, ndims, dims, &
+         periods, reorder, comm2d, ier )
+    call MPI_CART_COORDS( comm2d, myid, 2, coords, ier)
+
+    npx = coords(1)
+    npy = coords(2)
+
+    call MPI_Cart_shift( comm2d, 0, 1, n_west, n_east, ier )
+    call MPI_Cart_shift( comm2d, 1, 1, n_suth, n_nrth, ier )
+
+    icp=0
+    DO I=1,PX
+    DO J=1,PY
+      ProcessorID(I,J) = icp
+      icp=icp+1
+    ENDDO
+    ENDDO
+
+END SUBROUTINE PARALLEL_CARTESIAN
+# endif
+
+
+!==================For AMR routine ykchoi
+SUBROUTINE INDEX_LOCAL(ng)
+# if defined (PARALLEL)
+    USE GLOBAL,ONLY: PX,PY,Mloc,Nloc,Mglob,Nglob,Nghost,Ibeg,Iend,Jbeg,Jend,Iend1,Jend1,&
+                     Mloc1,Nloc1,GridDimX,GridDimY
+# else
+    USE GLOBAL,ONLY: Mloc,Nloc,Mglob,Nglob,Nghost,Ibeg,Iend,Jbeg,Jend,Iend1,Jend1,&
+                     Mloc1,Nloc1,GridDimX,GridDimY
+# endif
+    USE LOCAL
+    IMPLICIT NONE
+    INTEGER,INTENT(IN)::ng    
+
+# if defined(PARALLEL)
+    Mglob=GridDimX(ng)  !ykchoi
+    Nglob=GridDimY(ng)  !ykchoi 
+
+    Mloc=GridDimX(ng)/px+2*Nghost
+    Nloc=GridDimY(ng)/py+2*Nghost
+    Mloc1=Mloc+1
+    Nloc1=Nloc+1
+# else
+    Mglob=GridDimX(ng)  !ykchoi
+    Nglob=GridDimY(ng)  !ykchoi
+
+    Mloc=GridDimX(ng)+2*Nghost
+    Nloc=GridDimY(ng)+2*Nghost
+    Mloc1=Mloc+1
+    Nloc1=Nloc+1
+# endif
+
+    Ibeg=Nghost+1
+    Iend=Mloc-Nghost
+    Iend1=Mloc1-Nghost
+    Jbeg=Nghost+1
+    Jend=Nloc-Nghost
+    Jend1=Nloc1-Nghost
+
+END SUBROUTINE INDEX_LOCAL
