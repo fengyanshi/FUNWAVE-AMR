@@ -1,0 +1,3 @@
+% GridDimX   GridDimY  Ratio_Spacing  MboxRef  NboxRef
+44  44  2  5  5
+74  74  2  5  5
